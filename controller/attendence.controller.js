@@ -213,12 +213,12 @@ exports.getMonthlyAttendanceDetails = async (req, res, next) => {
         if (day >= startDate && day <= endDate) {
           leaveDays += 1;
           totalDays += 1; // Each leave day represents a day
-          dailyRecords.push({
-            date: day.toISOString().split("T")[0],
-            checkInTime: null,
-            checkOutTime: null,
-            status: "on_leave",
-          });
+          // dailyRecords.push({
+          //   date: day.toISOString().split("T")[0],
+          //   checkInTime: null,
+          //   checkOutTime: null,
+          //   status: "on_leave",
+          // });
         }
       }
     });
