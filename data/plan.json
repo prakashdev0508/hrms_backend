@@ -1,0 +1,86 @@
+[
+    {
+        "_id": "66b90002abb4a890a4099993",
+        "name": "Monthly Plan",
+        "slug": "monthly",
+        "price": 50,
+        "description": "This is the monthly subscription plan with full access.",
+        "benefits": [
+            {
+                "name": "Access to Dashboard",
+                "available": true
+            },
+            {
+                "name": "24/7 Support",
+                "available": true
+            },
+            {
+                "name": "Custom Reports",
+                "available": true
+            },
+            {
+                "name": "Unlimited Users",
+                "available": true
+            }
+        ],
+        "createdAt": "2024-08-11T18:16:34.746Z",
+        "updatedAt": "2024-08-11T18:16:34.746Z",
+        "__v": 0
+    },
+    {
+        "_id": "66b9001eabb4a890a4099995",
+        "name": "Yearly Plan",
+        "slug": "yearly",
+        "price": 500,
+        "description": "This is the yearly subscription plan with full access and a discount.",
+        "benefits": [
+            {
+                "name": "Access to Dashboard",
+                "available": true
+            },
+            {
+                "name": "24/7 Support",
+                "available": true
+            },
+            {
+                "name": "Custom Reports",
+                "available": true
+            },
+            {
+                "name": "Unlimited Users",
+                "available": true
+            }
+        ],
+        "createdAt": "2024-08-11T18:17:02.362Z",
+        "updatedAt": "2024-08-11T18:17:02.362Z",
+        "__v": 0
+    },
+    {
+        "_id": "66b9003babb4a890a4099997",
+        "name": "Free Plan",
+        "slug": "free_plan",
+        "price": 0,
+        "description": "This is the free plan with limited access.",
+        "benefits": [
+            {
+                "name": "Access to Dashboard",
+                "available": true
+            },
+            {
+                "name": "24/7 Support",
+                "available": false
+            },
+            {
+                "name": "Custom Reports",
+                "available": false
+            },
+            {
+                "name": "Unlimited Users",
+                "available": false
+            }
+        ],
+        "createdAt": "2024-08-11T18:17:31.406Z",
+        "updatedAt": "2024-08-11T18:17:31.406Z",
+        "__v": 0
+    }
+]
