@@ -12,6 +12,10 @@ const verifyToken = async (req, res, next) => {
   
     let data = jwt.verify(token, process.env.JWT_SECRETE);
 
+    if(!data){
+      return next(createError(403, "Invladid token"));
+    }
+
     req.user = data
   
     next();
