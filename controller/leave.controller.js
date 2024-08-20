@@ -73,6 +73,10 @@ exports.approveLeave = async (req, res, next) => {
       .populate("userId")
       .session(session);
 
+      if(!leave){
+        return next(createError(400, `Leave not found`));
+      }
+
     if (leave.status == "approved" || leave.status == "rejected") {
       return next(createError(400, `Already ${leave?.status}`));
     }
