@@ -15,15 +15,26 @@ const OrganizationSchema = new mongoose.Schema(
     currentActivePlanEndDate: { type: Date },
     is_active: { type: Boolean, default: true },
     location: {
-      latitude: { type: Number, required: true },
-      longitude: { type: Number, required: true },
+      latitude: { type: Number},
+      longitude: { type: Number},
     },
-    checkinTime: { type: String, required: true },  
-    checkoutTime: { type: String, required: true }, 
+    checkinTime: { type: String},
+    checkoutTime: { type: String},
+    weakHoliday: {
+      type: String,
+      enum: [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ],
+    },
   },
   { timestamps: true }
 );
-
 
 const SubscribedPlan = new mongoose.Schema(
   {
@@ -111,10 +122,10 @@ const UserSchema = new mongoose.Schema(
     is_active: { type: Boolean, default: true },
     salary: { type: Number },
     joinDate: { type: Date, default: Date.now },
-    checkInTime : {type: String},
-    checkOutTime : {type: String},
+    checkInTime: { type: String },
+    checkOutTime: { type: String },
     allotedLeave: { type: Number },
-    workDuration : {type : Number},
+    workDuration: { type: Number },
     reportingManager: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     weekLeave: {
       type: String,
@@ -155,7 +166,7 @@ const AttendanceSchema = new mongoose.Schema(
         "early",
         "paid_leave",
         "regularise",
-        "pending_regularize"
+        "pending_regularize",
       ],
     },
     checkInTime: { type: Date },
