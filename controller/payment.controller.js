@@ -8,18 +8,13 @@ const { createError, createSucces } = require("../utils/response");
 
 exports.createPayment = async (req, res, next) => {
   try {
-    const { organizationId, _id, role } = req.user;
-
-    if (!organizationId || !_id) {
-      return next(createError(401, "You are not authorized to create payment"));
-    }
-    const { amount, paymentStatus, paymentMethod, selectedPlan } = req.body; 
+    const { amount, paymentStatus, paymentMethod, selectedPlan, organizationId } = req.body; 
 
     const plan = await Pricing.findById(selectedPlan);
 
     if(!plan){
       return next(createError(404, "Plan not found"))
-    }
+    } 
 
     if (amount < plan.price) {
       return next(createError(401, "Price is low"));
@@ -30,23 +25,14 @@ exports.createPayment = async (req, res, next) => {
       paymentStatus,
       paymentMethod,
       organizationId,
-      created_by: _id,
     });
 
     if (!payment) {
       return next(createError(402, "Payment Falied please try again"));
     }
 
-    if (!plan) {
-      payment.paymentStatus = "failed";
-      payment.save();
-      return next(createError(404, "No Plan Found"));
-    }
-
     let startDate = new Date();
-    let endDate = new Date(
-      startDate.getTime() + plan.duration * 24 * 60 * 60 * 1000
-    );
+    let endDate = new Date(startDate.getTime() + plan.duration * 24 * 60 * 60 * 1000); // Correct calculation
 
     const planActivation = await SubscribedPlan.create({
       organizationId,
@@ -59,33 +45,43 @@ exports.createPayment = async (req, res, next) => {
 
     if (!planActivation) {
       payment.paymentStatus = "failed";
-      payment.save();
+      await payment.save();
       return next(createError(404, ` Plan Activation failed`));
     }
 
     const organization = await Organization.findById(organizationId);
 
     if(!organization){
-      return next(createError(404, "Organization not found"))
+      return next(createError(404, "Organization not found"));
+    }
+
+    if(organization.firstPayment && plan.slug == "free_plan"){
+      return next(createError(400 , "Please select a paid plan"));
     }
 
     if (!organization?.currentActivePlanStartDate) {
       organization.currentActivePlanStartDate = startDate;
-    }
-    organization.currentActivePlanEndDate =
-      organization?.currentActivePlanEndDate
-        ? organization?.currentActivePlanEndDate + endDate
-        : endDate;
+    } 
+
+    // Ensure currentActivePlanEndDate is calculated properly and added correctly
+    organization.currentActivePlanEndDate = organization?.currentActivePlanEndDate 
+      ? new Date(organization?.currentActivePlanEndDate.getTime() + plan.duration * 24 * 60 * 60 * 1000)
+      : endDate;
+
     organization.currentActivePlan = planActivation._id;
-    organization.save();
+    organization.onBoardingStatus = "completed";
+    organization.firstPayment = organization.firstPayment === false ? true : organization.firstPayment;
+    
+    await organization.save();
 
     return createSucces(
       res,
       200,
-      "Payment successfull and plan activate for your organisation "
+      "Payment successful and plan activated for your organization"
     );
   } catch (error) {
-    console.log(error)
-    next(createError(403, error));
+    console.log(error);
+    next(createError(403, error.message));
   }
 };
+

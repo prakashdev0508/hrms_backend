@@ -87,13 +87,19 @@ exports.login = async (req, res, next) => {
       return next(createError(403, "Invlaid credentials"));
     }
 
+    const organisation = await Organization.findById(user.organizationId);
+
+    if (organisation?.onBoardingStatus != "completed") {
+      return createSucces(res, 202, organisation?.onBoardingStatus, null);
+    }
+
     const token = jwt.sign(
       { _id: user._id, role: user.role, organizationId: user.organizationId },
       process.env.JWT_SECRETE
     );
 
     res.cookie("user_Token", token, {
-      expires: new Date(Date.now() + 2589200000),
+      expires: new Date(Date.now() + 2589200000), 
       httpOnly: true,
     });
     res.status(201).json({ message: "Logged in", token });

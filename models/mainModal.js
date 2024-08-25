@@ -15,11 +15,20 @@ const OrganizationSchema = new mongoose.Schema(
     currentActivePlanEndDate: { type: Date },
     is_active: { type: Boolean, default: true },
     location: {
-      latitude: { type: Number},
-      longitude: { type: Number},
+      latitude: { type: Number },
+      longitude: { type: Number },
     },
-    checkinTime: { type: String},
-    checkoutTime: { type: String},
+    onBoardingStatus: {
+      type: String,
+      enum: ["lead", "pending_details", "panding_payment", "completed"],
+    },
+    selectedPlan: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "PricingPlan",
+    },
+    firstPayment: { type: Boolean, default: false },
+    checkinTime: { type: String },
+    checkoutTime: { type: String },
     weakHoliday: {
       type: String,
       enum: [
@@ -35,6 +44,21 @@ const OrganizationSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+const Lead = new mongoose.Schema({
+  mobileNumber: { type: Number },
+  leadStatus: {
+    type: String,
+    enum: [
+      "lead",
+      "contacted",
+      "intrested",
+      "notIntrested",
+      "lost",
+      "onboarded",
+    ],
+  },
+});
 
 const SubscribedPlan = new mongoose.Schema(
   {
@@ -96,7 +120,6 @@ const PaymentSchema = new mongoose.Schema(
     created_by: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
     },
   },
   { timestamps: true }
@@ -299,4 +322,5 @@ module.exports = {
   Payment: mongoose.model("Payment", PaymentSchema),
   Pricing: mongoose.model("Pricing", PricingSchema),
   SubscribedPlan: mongoose.model("SubscribedPlan", SubscribedPlan),
+  Lead: mongoose.model("Lead", Lead),
 };

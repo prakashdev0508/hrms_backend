@@ -1,4 +1,4 @@
-const { Organization, User } = require("../models/mainModal");
+const { Organization, User, Pricing } = require("../models/mainModal");
 const { createError, createSucces } = require("../utils/response");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -18,9 +18,7 @@ exports.createOrganization = async (req, res, next) => {
       contactPhone,
       username,
       password,
-      location,
-      checkInTime,
-      checkOutTime,
+      selectedPlan,
     } = req.body;
 
     // Create Organization
@@ -29,10 +27,15 @@ exports.createOrganization = async (req, res, next) => {
       address,
       contactEmail,
       contactPhone,
-      location,
-      checkoutTime: checkOutTime,
-      checkinTime: checkInTime,
+      onBoardingStatus: "pending_details",
+      selectedPlan,
     });
+
+    const plan = await Pricing.findById(selectedPlan);
+
+    if (!plan) {
+      return next(createError(404, "Please select a vlaid plan"));
+    }
 
     const organisation = await newOrganization.save({ session });
 
@@ -56,8 +59,6 @@ exports.createOrganization = async (req, res, next) => {
       role: "super_admin",
       name,
       organizationId: organisation._id,
-      checkInTime: checkInTime,
-      checkOutTime: checkOutTime,
     });
 
     const user = await newUser.save({ session });
@@ -73,8 +74,7 @@ exports.createOrganization = async (req, res, next) => {
     session.endSession();
 
     return createSucces(res, 201, "Organization and User Created", {
-      organization: organisation,
-      user: user,
+      organization: organisation._id,
     });
   } catch (error) {
     // Rollback the transaction in case of error
@@ -124,19 +124,10 @@ exports.getOrganizationById = async (req, res, next) => {
 exports.updateOrganization = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, address, contactEmail, contactPhone, currentActivePlan } =
-      req.body;
 
     const updatedOrganization = await Organization.findByIdAndUpdate(
       id,
-      {
-        name,
-        address,
-        contactEmail,
-        contactPhone,
-        currentActivePlan,
-        updated_at: Date.now(),
-      },
+      { ...req.body, updated_at: Date.now() },
       { new: true }
     );
 
