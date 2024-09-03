@@ -12,9 +12,9 @@ router.get('/', organizationController.getAllOrganizations);
 // router.get('/:id', organizationController.getOrganizationById);
 
 // Update Organization
-router.put('/:id', verifyToken , organizationController.updateOrganization);
+router.put('/update/:id' , organizationController.updateOrganization);
 
 // Delete Organization
-router.delete('/:id', verifyToken , organizationController.deleteOrganization);
+router.delete('/:id' , organizationController.deleteOrganization);
 
 module.exports = router;

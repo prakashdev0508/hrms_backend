@@ -32,8 +32,9 @@ exports.createOrganization = async (req, res, next) => {
     });
 
     const plan = await Pricing.findById(selectedPlan);
-
     if (!plan) {
+      await session.abortTransaction();
+      session.endSession();
       return next(createError(404, "Please select a vlaid plan"));
     }
 

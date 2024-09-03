@@ -139,7 +139,7 @@ const UserSchema = new mongoose.Schema(
     password: { type: String, required: true },
     role: {
       type: String,
-      enum: ["admin", "employee", "super_admin"],
+      enum: [ "employee", "super_admin" , "reporting_manager"],
       required: true,
     },
     is_active: { type: Boolean, default: true },

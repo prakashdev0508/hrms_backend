@@ -19,7 +19,7 @@ const verifyToken = async (req, res, next) => {
     req.user = data
   
     next();
-  };
+  }; 
 
 
 module.exports = {

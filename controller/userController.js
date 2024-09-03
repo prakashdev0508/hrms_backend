@@ -81,6 +81,10 @@ exports.login = async (req, res, next) => {
       return next(createError(403, "User not found"));
     }
 
+    if(!user.is_active){
+      return createError(400, "User is not active")
+    }
+
     const isPasswordMatch = await bcrypt.compare(password, user.password);
 
     if (!isPasswordMatch) {
@@ -90,7 +94,10 @@ exports.login = async (req, res, next) => {
     const organisation = await Organization.findById(user.organizationId);
 
     if (organisation?.onBoardingStatus != "completed") {
-      return createSucces(res, 202, organisation?.onBoardingStatus, null);
+      return createSucces(res, 202, organisation?.onBoardingStatus, {
+        planId: organisation?.selectedPlan,
+        organizationId: user.organizationId,
+      });
     }
 
     const token = jwt.sign(
@@ -99,10 +106,17 @@ exports.login = async (req, res, next) => {
     );
 
     res.cookie("user_Token", token, {
-      expires: new Date(Date.now() + 2589200000), 
+      expires: new Date(Date.now() + 2589200000),
       httpOnly: true,
     });
-    res.status(201).json({ message: "Logged in", token });
+    res
+      .status(201)
+      .json({
+        message: "Logged in",
+        token,
+        role: user.role,
+        organizationId: user.organizationId,
+      });
   } catch (error) {
     next(createError(403, error));
   }
