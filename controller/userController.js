@@ -30,6 +30,8 @@ exports.register = async (req, res, next) => {
       return next(createError(404, "Organization not found"));
     }
 
+    console.log(organisation)
+
     const checkInDate = checkInTime
       ? new Date(`1970-01-01T${checkInTime}:00Z`)
       : new Date(`1970-01-01T${organisation?.checkinTime}:00Z`);
@@ -39,6 +41,8 @@ exports.register = async (req, res, next) => {
 
     // Calculate duration in hours
     const workDuration = (checkOutDate - checkInDate) / (1000 * 60 * 60);
+
+    console.log(workDuration)
 
     // Create new user
     const newUser = new User({
@@ -64,6 +68,8 @@ exports.register = async (req, res, next) => {
     // Handle errors
     if (error?.keyValue?.username) {
       next(createError(403, "Username already exists"));
+    }else if (error?.keyValue?.email) {
+      next(createError(403, "Email already exists"));
     } else {
       next(createError(403, error));
     }

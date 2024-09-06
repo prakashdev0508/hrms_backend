@@ -5,10 +5,10 @@ exports.crmDashoardHome = async (req, res) => {
   try {
     const { _id, organizationId, role } = req.user;
 
-    const page = parseInt(req.query.page) || 1; 
+    const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const sortField = req.query.sortField || 'name';
-    const sortOrder = req.query.sortOrder === 'desc' ? -1 : 1; 
+    const sortField = req.query.sortField || "name";
+    const sortOrder = req.query.sortOrder === "desc" ? -1 : 1;
     const filter = req.query.filter || {};
 
     let query = { organizationId: organizationId };
@@ -24,11 +24,11 @@ exports.crmDashoardHome = async (req, res) => {
       query.email = { $regex: filter.email, $options: "i" };
     }
     if (filter.is_active !== undefined) {
-      query.is_active = filter.is_active === 'true';
+      query.is_active = filter.is_active === "true";
     }
 
     const users = await User.find(query)
-      .select("name username email is_active salary")
+      .select("name username email is_active salary role")
       .sort({ [sortField]: sortOrder })
       .skip((page - 1) * limit)
       .limit(limit);
@@ -36,14 +36,16 @@ exports.crmDashoardHome = async (req, res) => {
     const totalUsers = await User.countDocuments(query);
 
     res.status(200).json({
-      page,
-      limit,
-      totalUsers,
-      totalPages: Math.ceil(totalUsers / limit),
-      users,
+      usersDetails: {
+        page,
+        limit,
+        totalUsers,
+        totalPages: Math.ceil(totalUsers / limit),
+        users,
+      },
     });
   } catch (error) {
-    console.log("err" , error)
+    console.log("err", error);
     res.status(500).json({ message: "Server Error", error });
   }
 };
