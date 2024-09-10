@@ -68,6 +68,7 @@ exports.checkInAttendance = async (req, res, next) => {
       date,
       checkInTime: Date.now(),
       chcekInlocation: location,
+      status : "checked_in"
     });
 
     await newAttendance.save();

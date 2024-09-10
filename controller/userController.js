@@ -1,7 +1,8 @@
-const { User, Organization } = require("../models/mainModal");
+const { User, Organization, Attendance } = require("../models/mainModal");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
+const moment = require("moment"); // For date manipulations
 
 const { createError, createSucces } = require("../utils/response");
 
@@ -18,6 +19,9 @@ exports.register = async (req, res, next) => {
       allotedLeave,
       checkInTime,
       checkOutTime,
+      reportingManager,
+      joinDate,
+      salary
     } = req.body;
 
     // Generate salt and hash password
@@ -30,7 +34,7 @@ exports.register = async (req, res, next) => {
       return next(createError(404, "Organization not found"));
     }
 
-    console.log(organisation)
+    console.log(organisation);
 
     const checkInDate = checkInTime
       ? new Date(`1970-01-01T${checkInTime}:00Z`)
@@ -41,8 +45,6 @@ exports.register = async (req, res, next) => {
 
     // Calculate duration in hours
     const workDuration = (checkOutDate - checkInDate) / (1000 * 60 * 60);
-
-    console.log(workDuration)
 
     // Create new user
     const newUser = new User({
@@ -57,6 +59,9 @@ exports.register = async (req, res, next) => {
       allotedLeave,
       checkInTime: checkInTime ? checkInTime : organisation?.checkinTime,
       checkOutTime: checkOutTime ? checkOutTime : organisation?.checkoutTime,
+      reportingManager,
+      joinDate,
+      salary
     });
 
     // Save the user
@@ -68,7 +73,7 @@ exports.register = async (req, res, next) => {
     // Handle errors
     if (error?.keyValue?.username) {
       next(createError(403, "Username already exists"));
-    }else if (error?.keyValue?.email) {
+    } else if (error?.keyValue?.email) {
       next(createError(403, "Email already exists"));
     } else {
       next(createError(403, error));
@@ -87,8 +92,8 @@ exports.login = async (req, res, next) => {
       return next(createError(403, "User not found"));
     }
 
-    if(!user.is_active){
-      return createError(400, "User is not active")
+    if (!user.is_active) {
+      return createError(400, "User is not active");
     }
 
     const isPasswordMatch = await bcrypt.compare(password, user.password);
@@ -115,14 +120,12 @@ exports.login = async (req, res, next) => {
       expires: new Date(Date.now() + 2589200000),
       httpOnly: true,
     });
-    res
-      .status(201)
-      .json({
-        message: "Logged in",
-        token,
-        role: user.role,
-        organizationId: user.organizationId,
-      });
+    res.status(201).json({
+      message: "Logged in",
+      token,
+      role: user.role,
+      organizationId: user.organizationId,
+    });
   } catch (error) {
     next(createError(403, error));
   }
@@ -143,5 +146,81 @@ exports.me = async (req, res, next) => {
   } catch (error) {
     console.log(error);
     next(createError(403, error));
+  }
+};
+
+exports.userDetail = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { month, year } = req.query;
+
+    // Get user data with reporting manager populated
+    const user = await User.findById(id)
+      .select(
+        "name is_active weekLeave createdAt username role email salary joinDate checkInTime checkOutTime"
+      )
+      .populate("reportingManager", "name");
+
+    if (!user) {
+      return next(createError(404, "User not found"));
+    }
+
+    // If no month and year are provided, default to the current month and year
+    const currentYear = year ? parseInt(year) : moment().year();
+    const currentMonth = month ? parseInt(month) - 1 : moment().month(); // 0-based month index for JavaScript Date
+
+    // Find all attendance records for the user in the requested or current month
+    const attendanceRecords = await Attendance.find({
+      userId: id,
+      date: {
+        $gte: new Date(currentYear, currentMonth, 1), // Start of the requested month
+        $lt: new Date(currentYear, currentMonth + 1, 1), // Start of the next month
+      },
+    }).select("date status checkInTime checkOutTime");
+
+    // Get all days in the requested or current month
+    const daysInMonth = moment({
+      year: currentYear,
+      month: currentMonth,
+    }).daysInMonth();
+    let attendanceData = [];
+
+    // Loop through all days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const currentDate = new Date(currentYear, currentMonth, day);
+
+      // Find if there's an attendance record for the current date
+      const record = attendanceRecords.find((attendance) =>
+        moment(attendance.date).isSame(currentDate, "day")
+      );
+
+      // If no record exists, mark it as "not available"
+      if (!record) {
+        attendanceData.push({
+          date: currentDate,
+          status: "not available",
+          checkInTime: null,
+          checkOutTime: null,
+        });
+      } else {
+        attendanceData.push({
+          date: record.date,
+          status: record.status,
+          checkInTime: record.checkInTime,
+          checkOutTime: record.checkOutTime,
+        });
+      }
+    }
+
+    // Attach the attendance data to the response
+    const userDetails = {
+      ...user._doc,
+      attendance: attendanceData,
+    };
+
+    createSucces(res, 200, "User details retrieved successfully", userDetails);
+  } catch (error) {
+    console.log(error);
+    next(createError(500, error.message));
   }
 };

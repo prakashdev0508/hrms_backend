@@ -190,6 +190,7 @@ const AttendanceSchema = new mongoose.Schema(
         "paid_leave",
         "regularise",
         "pending_regularize",
+        "checked_in"
       ],
     },
     checkInTime: { type: Date },
