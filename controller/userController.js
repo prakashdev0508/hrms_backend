@@ -21,7 +21,7 @@ exports.register = async (req, res, next) => {
       checkOutTime,
       reportingManager,
       joinDate,
-      salary
+      salary,
     } = req.body;
 
     // Generate salt and hash password
@@ -61,7 +61,7 @@ exports.register = async (req, res, next) => {
       checkOutTime: checkOutTime ? checkOutTime : organisation?.checkoutTime,
       reportingManager,
       joinDate,
-      salary
+      salary,
     });
 
     // Save the user
@@ -92,8 +92,8 @@ exports.login = async (req, res, next) => {
       return next(createError(403, "User not found"));
     }
 
-    if (!user.is_active) {
-      return createError(400, "User is not active");
+    if (!user?.is_active) {
+      return next(createError(400, "User is not active"));
     }
 
     const isPasswordMatch = await bcrypt.compare(password, user.password);
@@ -222,5 +222,26 @@ exports.userDetail = async (req, res, next) => {
   } catch (error) {
     console.log(error);
     next(createError(500, error.message));
+  }
+};
+
+//Update user
+exports.updateuser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { ...req.body, updated_at: Date.now() },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return next(createError(404, "User not found"));
+    }
+
+    return createSucces(res, 200, "User Updated", null);
+  } catch (error) {
+    return next(createError(400, error));
   }
 };

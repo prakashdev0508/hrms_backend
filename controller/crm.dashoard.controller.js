@@ -57,7 +57,7 @@ exports.crmDashoardUser = async (req, res) => {
     // Extract pagination, sorting, and filtering parameters
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const sortField = req.query.sortField || "name";
+    const sortField = req.query.sortField || "createdAt";
     const sortOrder = req.query.sortOrder === "desc" ? -1 : 1;
     const filter = req.query.filter || {};
 
@@ -79,14 +79,24 @@ exports.crmDashoardUser = async (req, res) => {
       query.is_active = filter.is_active === "true";
     }
 
+    // Check if sortField is valid, default to "name" otherwise
+    const validSortFields = ["name", "email", "createdAt"];
+    if (!validSortFields.includes(sortField)) {
+      sortField = "name"; // Fallback to default
+    }
+
+    const reportingManagerList = await User.find({
+      role: { $in: ["super_admin", "reporting_manager"] },
+    }).select("name role");
+
     // Fetch users from database with pagination and sorting
     const users = await User.find(query)
-      .select("name username email is_active salary role")
-      .sort({ [sortField]: sortOrder })  // Sort based on sortField and sortOrder
+      .select("name username email is_active salary role createdAt")
+      .sort({ [sortField]: sortOrder })
       .skip((page - 1) * limit)
       .limit(limit);
 
-    const totalUsers = await User.countDocuments(query);  // Total user count for pagination
+    const totalUsers = await User.countDocuments(query);
 
     res.status(200).json({
       page,
@@ -94,6 +104,7 @@ exports.crmDashoardUser = async (req, res) => {
       totalUsers,
       totalPages: Math.ceil(totalUsers / limit),
       users,
+      reportingManagerList,
     });
   } catch (error) {
     console.log("Error", error);

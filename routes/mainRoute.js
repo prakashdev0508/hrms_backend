@@ -7,9 +7,18 @@ const {
   updatePricing,
   deletePricing,
 } = require("../controller/pricingController");
-const { register, login, me, userDetail } = require("../controller/userController");
+const {
+  register,
+  login,
+  me,
+  userDetail,
+  updateuser,
+} = require("../controller/userController");
 const { verifyToken } = require("../utils/authentication");
-const { checkPlanValidation } = require("../utils/middleware/authenticateOrgination");
+const {
+  checkPlanValidation,
+  checkActiveUser,
+} = require("../utils/middleware/authenticateOrgination");
 
 // Pricing Routes
 router.post("/pricing/create", createPricing);
@@ -21,7 +30,20 @@ router.delete("/pricing/delete/:id", verifyToken, deletePricing);
 // User Routes
 router.post("/user/create", register);
 router.post("/user/login", login);
-router.get("/user/me", verifyToken, checkPlanValidation ,me);
-router.get("/user/:id" , verifyToken , checkPlanValidation , userDetail) 
+router.get("/user/me", verifyToken, checkPlanValidation, checkActiveUser, me);
+router.get(
+  "/user/:id",
+  verifyToken,
+  checkPlanValidation,
+  checkActiveUser,
+  userDetail
+);
+router.put(
+  "/user/:id",
+  verifyToken,
+  checkPlanValidation,
+  checkActiveUser,
+  updateuser
+);
 
 module.exports = router;
