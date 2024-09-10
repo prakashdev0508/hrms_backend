@@ -1,4 +1,4 @@
-const { Leave, Attendance } = require("../models/mainModal");
+const { Leave, Attendance , User } = require("../models/mainModal");
 const { createError, createSucces } = require("../utils/response");
 const mongoose = require("mongoose");
 
@@ -65,6 +65,10 @@ exports.approveLeave = async (req, res, next) => {
 
     const { _id, organizationId, role } = req.user;
     const { leaveID, status } = req.body;
+
+    if(leaveID == "" || status == ""){
+      return next(createError(400, `Some data missing`));
+    }
 
     const leave = await Leave.findOne({
       _id: leaveID,
@@ -137,3 +141,52 @@ exports.approveLeave = async (req, res, next) => {
     next(createError(400, error));
   }
 };
+
+exports.getLeaveList = async (req, res, next) => {
+  try {
+    const { _id, organizationId, role } = req.user;
+
+    // Extract pagination, sorting, and filtering parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const sortField = req.query.sortField || "createdAt";
+    const sortOrder = req.query.sortOrder === "desc" ? -1 : 1;
+    const status = req.query.status || null;
+
+    // Build the base query
+    let query = { organizationId };
+
+    // Apply role-specific filters
+    if (role == 'reporting_manager') {
+      const reportingManagerUserIds = await User.find({ reportingManager: _id }).select('_id');
+      query.userId = { $in: reportingManagerUserIds.map(user => user._id) };
+    }
+
+    // Apply status filter if provided
+    if (status) {
+      query.status = status;
+    }
+
+    // Fetch leaves with pagination, sorting, and filtering
+    const leaves = await Leave.find(query)
+      .populate('userId', 'name email') // Populate user information if needed
+      .sort({ [sortField]: sortOrder })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    // Count total documents for pagination
+    const totalLeaves = await Leave.countDocuments(query);
+
+    // Return the paginated and filtered list
+    res.status(200).json({
+      page,
+      limit,
+      totalLeaves,
+      totalPages: Math.ceil(totalLeaves / limit),
+      leaves,
+    });
+  } catch (error) {
+    console.log(error)
+    next(createError(400, error));
+  }
+}; 
