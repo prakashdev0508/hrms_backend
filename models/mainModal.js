@@ -190,22 +190,30 @@ const AttendanceSchema = new mongoose.Schema(
         "paid_leave",
         "regularise",
         "pending_regularize",
-        "checked_in"
+        "checked_in",
       ],
     },
     checkInTime: { type: Date },
     checkOutTime: { type: Date },
-    chcekInlocation: {
+    checkInLocation: {
       latitude: { type: Number },
       longitude: { type: Number },
     },
-    checkOutlocation: {
+    checkOutLocation: {
       latitude: { type: Number },
       longitude: { type: Number },
+    },
+    // Regularization fields
+    isRegularized: { type: Boolean, default: false },
+    regularizationReason: { type: String },
+    regularizedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
   },
   { timestamps: true }
 );
+
 
 // Leave Schema
 const LeaveSchema = new mongoose.Schema(

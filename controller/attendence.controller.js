@@ -61,14 +61,14 @@ exports.checkInAttendance = async (req, res, next) => {
         createError(400, "Check-in location is not within the allowed range")
       );
     }
-    
+
     const newAttendance = new Attendance({
       organizationId,
       userId: _id,
       date,
       checkInTime: Date.now(),
       chcekInlocation: location,
-      status : "checked_in"
+      status: "checked_in",
     });
 
     await newAttendance.save();
@@ -150,7 +150,6 @@ exports.checkOutAttendance = async (req, res, next) => {
     return next(createError(400, error));
   }
 };
-
 
 exports.getMonthlyAttendanceDetails = async (req, res, next) => {
   try {
@@ -245,8 +244,169 @@ exports.getMonthlyAttendanceDetails = async (req, res, next) => {
   }
 };
 
-exports.applyregularize = async (req, res, next) => {
+// Apply for regularization
+exports.applyRegularization = async (req, res, next) => {
   try {
     const { _id, organizationId } = req.user;
-  } catch (error) {}
+    const { date, reason, checkInTime, checkOutTime } = req.body;
+
+    let attendance = await Attendance.findOne({
+      organizationId,
+      userId: _id,
+      date: {
+        $gte: new Date(date).setHours(0, 0, 0, 0),
+        $lt: new Date(date).setHours(23, 59, 59, 999),
+      },
+    });
+
+    let leaveDetail = await Leave.findOne({
+      organizationId,
+      userId: _id,
+      startDate: { $lte: date },
+      endDate: { $gte: date },
+      status: { $in: ["pending", "approved"] },
+    });
+  
+
+    if(leaveDetail){
+      return next(createError(400 , "Leave applied on this date"))
+    }
+
+    // If attendance data exists for the day, update it
+    if (attendance) {
+      if (attendance.isRegularized) {
+        return next(createError(400, "Attendance is already regularized"));
+      }
+
+      // Update the existing attendance record
+      attendance.checkInTime = checkInTime || attendance.checkInTime;
+      attendance.checkOutTime = checkOutTime || attendance.checkOutTime;
+      attendance.status = "pending_regularize"; // Set status to pending regularization
+      attendance.isRegularized = true;
+      attendance.regularizationReason = reason || "";
+
+      await attendance.save();
+      return createSucces(
+        res,
+        200,
+        "Attendance record updated and regularization request submitted",
+        null
+      );
+    }
+
+    // If no attendance data exists, create a new attendance record
+    attendance = new Attendance({
+      organizationId,
+      userId: _id,
+      date,
+      checkInTime: checkInTime || null, // Use provided check-in time or null
+      checkOutTime: checkOutTime || null, // Use provided check-out time or null
+      status: "pending_regularize", // Set status to pending regularization
+      isRegularized: true,
+      regularizationReason: reason,
+    });
+
+    await attendance.save();
+    return createSucces(
+      res,
+      201,
+      "New attendance record created and regularization request submitted",
+      null
+    );
+  } catch (error) {
+    return next(createError(400, error));
+  }
+};
+
+// Approve regularization
+// Approve regularization
+exports.approveRegularization = async (req, res, next) => {
+  try {
+    const { attendanceId, status } = req.body;
+    const { _id: adminId, role } = req.user;
+
+    // Find the attendance record
+    const attendance = await Attendance.findById(attendanceId).populate(
+      "userId",
+      "reportingManager"
+    );
+
+    if (!attendance || attendance.status !== "pending_regularize") {
+      return next(createError(404, "Pending regularization not found"));
+    }
+    const user = await User.findById(attendance.userId);
+    if (
+      role !== "super_admin" &&
+      user.reportingManager.toString() !== adminId.toString()
+    ) {
+      return next(
+        createError(
+          403,
+          "You are not authorized to approve this regularization request"
+        )
+      );
+    }
+
+    // Update attendance status and save
+    attendance.status = status;
+    attendance.regularizedBy = adminId;
+    attendance.isRegularized = true;
+
+    await attendance.save();
+
+    return createSucces(res, 200, "Regularization approved", null);
+  } catch (error) {
+    return next(createError(400, error));
+  }
+};
+
+exports.getRegularizedAttendanceList = async (req, res, next) => {
+  try {
+    const { _id, organizationId, role } = req.user;
+
+    // Extract pagination, sorting, and filtering parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const sortField = req.query.sortField || "createdAt";
+    const sortOrder = req.query.sortOrder === "desc" ? -1 : 1;
+    const status = req.query.status || null;
+
+    // Build the base query for regularized attendance
+    let query = { organizationId, isRegularized: true };
+
+    // Apply role-specific filters
+    if (role === "reporting_manager") {
+      const reportingManagerUserIds = await User.find({
+        reportingManager: _id,
+      }).select("_id");
+      query.userId = { $in: reportingManagerUserIds.map((user) => user._id) };
+    }
+
+    // Apply status filter if provided
+    if (status) {
+      query.status = status;
+    }
+
+    // Fetch regularized attendance records with pagination, sorting, and filtering
+    const regularizedAttendances = await Attendance.find(query)
+      .populate("userId", "name email") // Populate user information if needed
+      .sort({ [sortField]: sortOrder })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    // Count total documents for pagination
+    const totalRegularizedAttendances = await Attendance.countDocuments(query);
+
+    // Return the paginated and filtered list
+    res.status(200).json({
+      page,
+      limit,
+      totalRegularizedAttendances,
+      totalPages: Math.ceil(totalRegularizedAttendances / limit),
+      regularizedAttendances,
+    });
+  } catch (error) {
+    console.log(error);
+    next(createError(400, error));
+  }
 };
