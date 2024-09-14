@@ -252,7 +252,7 @@ exports.appUserDetails = async (req, res, next) => {
     const { _id } = req.user;
     
     // Find user
-    const user = await User.findById(_id).populate("organizationId");
+    const user = await User.findById(_id).select("name email").populate("organizationId");
     if (!user) {
       return next(createError(404, "User not found"));
     }
@@ -287,6 +287,7 @@ exports.appUserDetails = async (req, res, next) => {
       attendanceStatus,
       leavesTaken,
       leavesLeft,
+      userDetails : user,
       organizationMembers,
     };
 
