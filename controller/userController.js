@@ -1,4 +1,4 @@
-const { User, Organization, Attendance } = require("../models/mainModal");
+const { User, Organization, Attendance , Leave } = require("../models/mainModal");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
@@ -245,3 +245,55 @@ exports.updateuser = async (req, res, next) => {
     return next(createError(400, error));
   }
 };
+
+exports.appUserDetails = async (req, res, next) => {
+  console.log("Hit aaya")
+  try {
+    const { _id } = req.user;
+    
+    // Find user
+    const user = await User.findById(_id).populate("organizationId");
+    if (!user) {
+      return next(createError(404, "User not found"));
+    }
+    
+    const organizationId = user.organizationId._id;
+    
+    // 1. Get today's attendance
+    const today = moment().startOf('day'); // Get start of today
+    const attendanceRecord = await Attendance.findOne({
+      userId: _id,
+      date: { $gte: today.toDate(), $lt: moment(today).endOf('day').toDate() },
+    }).select("status");
+
+    const attendanceStatus = attendanceRecord ? attendanceRecord.status : "not_available";
+
+    // 2. Get total leaves taken and leaves left
+    const leavesTaken = await Leave.find({
+      userId: _id,
+      status: "approved",
+    }).countDocuments();
+
+    const totalAllottedLeave = user.allotedLeave || 0; 
+    const leavesLeft = totalAllottedLeave - leavesTaken;
+
+    // 3. Get all members in the organization
+    const organizationMembers = await User.find({
+      organizationId,
+    }).select("name email role is_active");
+
+    // Prepare the response data
+    const appUserData = {
+      attendanceStatus,
+      leavesTaken,
+      leavesLeft,
+      organizationMembers,
+    };
+
+    return createSucces(res, 200, "User details retrieved successfully", appUserData);
+  } catch (error) {
+    console.log(error);
+    next(createError(500, error.message));
+  }
+};
+

@@ -13,6 +13,7 @@ const {
   me,
   userDetail,
   updateuser,
+  appUserDetails,
 } = require("../controller/userController");
 const { verifyToken } = require("../utils/authentication");
 const {
@@ -31,6 +32,7 @@ router.delete("/pricing/delete/:id", verifyToken, deletePricing);
 router.post("/user/create", register);
 router.post("/user/login", login);
 router.get("/user/me", verifyToken, checkPlanValidation, checkActiveUser, me);
+router.get("/user/app/home", verifyToken, checkPlanValidation, checkActiveUser, appUserDetails);
 router.get(
   "/user/:id",
   verifyToken,
