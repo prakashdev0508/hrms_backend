@@ -84,8 +84,9 @@ exports.crmDashoardUser = async (req, res) => {
     if (!validSortFields.includes(sortField)) {
       sortField = "name"; // Fallback to default
     }
-
+    
     const reportingManagerList = await User.find({
+      organizationId : organizationId ,
       role: { $in: ["super_admin", "reporting_manager"] },
     }).select("name role");
 
