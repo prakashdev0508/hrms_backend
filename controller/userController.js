@@ -247,7 +247,6 @@ exports.updateuser = async (req, res, next) => {
 };
 
 exports.appUserDetails = async (req, res, next) => {
-  console.log("Hit aaya")
   try {
     const { _id } = req.user;
     
@@ -257,6 +256,8 @@ exports.appUserDetails = async (req, res, next) => {
     if (!user) {
       return next(createError(404, "User not found"));
     }
+
+    console.log( "user ",  user)
     
     const organizationId = user.organizationId._id;
     
@@ -290,6 +291,10 @@ exports.appUserDetails = async (req, res, next) => {
       leavesLeft,
       userDetails,
       organizationMembers,
+      workinghours : {
+        checkinTime : user?.organizationId?.checkinTime,
+        checkoutTime : user?.organizationId?.checkoutTime
+      }
     };
 
     return createSucces(res, 200, "User details retrieved successfully", appUserData);

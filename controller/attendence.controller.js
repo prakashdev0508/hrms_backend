@@ -7,7 +7,7 @@ const {
 const { createError, createSucces } = require("../utils/response");
 
 function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
-  const R = 6371e3; // Radius of the earth in meters
+  const R = 6371000;
   const dLat = (lat2 - lat1) * (Math.PI / 180);
   const dLon = (lon2 - lon1) * (Math.PI / 180);
   const a =
@@ -55,6 +55,8 @@ exports.checkInAttendance = async (req, res, next) => {
       userLat,
       userLon
     );
+
+    console.log("diss" , distance)
 
     if (distance > 100) {
       return next(
