@@ -31,11 +31,10 @@ exports.applyLeave = async (req, res, next) => {
         date: { $gte: startDate, $lte: endDate },
       });
   
-      if (existingAttendance) {
-        return next(createError(400, "Attendance already recorded for the selected dates"));
+      if (existingAttendance.isRegularized) {
+        return next(createError(400, "Already regularized on this date"));
       }
   
-      // Create new leave application
       const leave = new Leave({
         organizationId: organizationId,
         userId: _id,

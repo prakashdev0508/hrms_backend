@@ -1,4 +1,4 @@
-const { User, Organization, Attendance , Leave } = require("../models/mainModal");
+const { User, Organization, Attendance , Leave  } = require("../models/mainModal");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
@@ -256,9 +256,7 @@ exports.appUserDetails = async (req, res, next) => {
     if (!user) {
       return next(createError(404, "User not found"));
     }
-
-    console.log( "user ",  user)
-    
+        
     const organizationId = user.organizationId._id;
     
     // 1. Get today's attendance

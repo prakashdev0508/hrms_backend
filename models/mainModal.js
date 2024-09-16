@@ -188,7 +188,8 @@ const AttendanceSchema = new mongoose.Schema(
         "on_leave",
         "early",
         "paid_leave",
-        "regularise",
+        "approved_regularise",
+        "reject_regularise",
         "pending_regularize",
         "checked_in",
       ],
@@ -210,6 +211,8 @@ const AttendanceSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    regularizedCheckInTime: { type: Date },
+    regularizedCheckOutTime: { type: Date },
   },
   { timestamps: true }
 );

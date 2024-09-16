@@ -5,6 +5,7 @@ const {
   Leave,
 } = require("../models/mainModal");
 const { createError, createSucces } = require("../utils/response");
+const moment = require("moment")
 
 function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
   const R = 6371000;
@@ -252,6 +253,10 @@ exports.applyRegularization = async (req, res, next) => {
     const { _id, organizationId } = req.user;
     const { date, reason, checkInTime, checkOutTime } = req.body;
 
+    if(moment(date).isAfter(moment())){
+      return next(createError(400, "You cannot apply regularization request for a future date"));
+    }
+
     let attendance = await Attendance.findOne({
       organizationId,
       userId: _id,
@@ -281,8 +286,8 @@ exports.applyRegularization = async (req, res, next) => {
       }
 
       // Update the existing attendance record
-      attendance.checkInTime = checkInTime || attendance.checkInTime;
-      attendance.checkOutTime = checkOutTime || attendance.checkOutTime;
+      attendance.regularizedCheckInTime = checkInTime || attendance.checkInTime;
+      attendance.regularizedCheckOutTime = checkOutTime || attendance.checkOutTime;
       attendance.status = "pending_regularize"; // Set status to pending regularization
       attendance.isRegularized = true;
       attendance.regularizationReason = reason || "";
@@ -349,8 +354,12 @@ exports.approveRegularization = async (req, res, next) => {
       );
     }
 
+    if(status == "approved_regularise"){
+      attendance.checkInTime = attendance.regularizedCheckInTime
+      attendance.checkOutTime = attendance.regularizedCheckOutTime
+    }
     // Update attendance status and save
-    attendance.status = status;
+    attendance.status = status
     attendance.regularizedBy = adminId;
     attendance.isRegularized = true;
 
