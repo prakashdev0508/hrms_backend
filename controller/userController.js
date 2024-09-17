@@ -267,15 +267,22 @@ exports.appUserDetails = async (req, res, next) => {
     }).select("status");
 
     const attendanceStatus = attendanceRecord ? attendanceRecord.status : "not_available";
-
-    // 2. Get total leaves taken and leaves left
-    const leavesTaken = await Leave.find({
+    const leavesApproved = await Leave.find({
       userId: _id,
       status: "approved",
     }).countDocuments();
+    const leavesRejected = await Leave.find({
+      userId: _id,
+      status: "rejected",
+    }).countDocuments();
+
+    const leavesPending = await Leave.find({
+      userId: _id,
+      status: "pending",
+    }).countDocuments();
 
     const totalAllottedLeave = user.allotedLeave || 0; 
-    const leavesLeft = totalAllottedLeave - leavesTaken;
+    const leavesLeft = totalAllottedLeave - leavesApproved;
 
     // 3. Get all members in the organization
     const organizationMembers = await User.find({
@@ -285,8 +292,12 @@ exports.appUserDetails = async (req, res, next) => {
     // Prepare the response data
     const appUserData = {
       attendanceStatus,
-      leavesTaken,
-      leavesLeft,
+      leaves : {
+        leavesApproved,
+        leavesRejected,
+        leavesLeft,
+        leavesPending
+      },
       userDetails,
       organizationMembers,
       workinghours : {

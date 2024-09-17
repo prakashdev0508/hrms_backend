@@ -42,6 +42,16 @@ exports.checkInAttendance = async (req, res, next) => {
       checkInTime: { $exists: true },
     });
 
+    const existingLeaveAttendance = await Attendance.findOne({
+      organizationId,
+      userId: _id,
+      date: {
+        $gte: new Date(date).setHours(0, 0, 0, 0),
+        $lt: new Date(date).setHours(23, 59, 59, 999),
+      },
+      checkInTime: { $exists: false },
+    });
+
     if (existingAttendance) {
       return next(createError(400, "You have already checked in today"));
     }
@@ -57,12 +67,18 @@ exports.checkInAttendance = async (req, res, next) => {
       userLon
     );
 
-    console.log("diss" , distance)
-
     if (distance > 100) {
       return next(
         createError(400, "Check-in location is not within the allowed range")
       );
+    }
+
+    if(existingLeaveAttendance){
+      existingLeaveAttendance.checkInLocation = location
+      existingLeaveAttendance.checkInTime = Date.now()
+      existingAttendance.status = "checked_in"
+      existingLeaveAttendance.save()
+      return createSucces(res, 201, "Check-in successful on leave date ", null);
     }
 
     const newAttendance = new Attendance({
@@ -78,6 +94,7 @@ exports.checkInAttendance = async (req, res, next) => {
 
     return createSucces(res, 201, "Check-in successful", null);
   } catch (error) {
+    console.log(error)
     return next(createError(400, error));
   }
 };
@@ -289,7 +306,6 @@ exports.applyRegularization = async (req, res, next) => {
       attendance.regularizedCheckInTime = checkInTime || attendance.checkInTime;
       attendance.regularizedCheckOutTime = checkOutTime || attendance.checkOutTime;
       attendance.status = "pending_regularize"; // Set status to pending regularization
-      attendance.isRegularized = true;
       attendance.regularizationReason = reason || "";
 
       await attendance.save();
@@ -357,11 +373,11 @@ exports.approveRegularization = async (req, res, next) => {
     if(status == "approved_regularise"){
       attendance.checkInTime = attendance.regularizedCheckInTime
       attendance.checkOutTime = attendance.regularizedCheckOutTime
+      attendance.isRegularized = true;
     }
     // Update attendance status and save
     attendance.status = status
     attendance.regularizedBy = adminId;
-    attendance.isRegularized = true;
 
     await attendance.save();
 
