@@ -71,13 +71,14 @@ exports.checkInAttendance = async (req, res, next) => {
       return next(
         createError(400, "Check-in location is not within the allowed range")
       );
-    }
+    } 
 
+    
     if(existingLeaveAttendance){
       existingLeaveAttendance.checkInLocation = location
       existingLeaveAttendance.checkInTime = Date.now()
-      existingAttendance.status = "checked_in"
-      existingLeaveAttendance.save()
+      existingLeaveAttendance.status = "checked_in"
+      await existingLeaveAttendance.save()
       return createSucces(res, 201, "Check-in successful on leave date ", null);
     }
 
