@@ -270,13 +270,13 @@ exports.appUserDetails = async (req, res, next) => {
         userId: _id,
         date: { $gte: today.toDate(), $lt: moment(today).endOf('day').toDate() },
       }).select("status"),
-      Leave.find({ userId: _id, status: "approved" }).countDocuments(), // Approved leaves
-      Leave.find({ userId: _id, status: "rejected" }).countDocuments(), // Rejected leaves
-      Leave.find({ userId: _id, status: "pending" }).countDocuments(),  // Pending leaves
-      User.find({ organizationId }).select("name email role is_active"),  // Organization members
-      Attendance.find({ userId: _id, isRegularized: true, regularizeRequest: "approved" }).countDocuments(),  // Approved regularizations
-      Attendance.find({ userId: _id, regularizeRequest: "pending" }).countDocuments(),  // Pending regularizations
-      Attendance.find({ userId: _id, regularizeRequest: "rejected" }).countDocuments()  // Rejected regularizations
+      Leave.find({ userId: _id, status: "approved" }).countDocuments(),
+      Leave.find({ userId: _id, status: "rejected" }).countDocuments(),
+      Leave.find({ userId: _id, status: "pending" }).countDocuments(), 
+      User.find({ organizationId }).select("name email role is_active"),
+      Attendance.find({ userId: _id, isRegularized: true, regularizeRequest: "approved" }).countDocuments(), 
+      Attendance.find({ userId: _id, regularizeRequest: "pending" }).countDocuments(),
+      Attendance.find({ userId: _id, regularizeRequest: "rejected" }).countDocuments() 
     ]);
 
     // Attendance status
