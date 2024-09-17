@@ -265,7 +265,7 @@ exports.appUserDetails = async (req, res, next) => {
       regularizationsPendingCount,
       regularizationsRejectedCount
     ] = await Promise.all([
-      User.findById(_id).select("name email allotedLeave checkInTime checkOutTime"),  
+      User.findById(_id).select("name email allotedLeave checkInTime checkOutTime leaveTaken"),  
       Attendance.findOne({  
         userId: _id,
         date: { $gte: today.toDate(), $lt: moment(today).endOf('day').toDate() },
@@ -284,8 +284,7 @@ exports.appUserDetails = async (req, res, next) => {
     
     // Leaves calculations
     const totalAllottedLeave = userDetails.allotedLeave || 0; 
-    const leavesLeft = totalAllottedLeave - leavesApprovedCount;
-
+    
     // Prepare the response data
     const appUserData = {
       attendanceStatus,
@@ -297,8 +296,8 @@ exports.appUserDetails = async (req, res, next) => {
       },
       userDetails,
       organizationMembers,
-      leavesLeft,
-      leaveTaken : userDetails.leaveTaken
+      totalAllottedLeave,
+      leaveTaken : userDetails.leaveTaken || 0
     };
 
     // Return success response
