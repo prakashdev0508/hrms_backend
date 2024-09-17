@@ -298,7 +298,7 @@ exports.appUserDetails = async (req, res, next) => {
       userDetails,
       organizationMembers,
       leavesLeft,
-      leaveTaken : leavesApprovedCount
+      leaveTaken : userDetails.leaveTaken
     };
 
     // Return success response

@@ -83,6 +83,8 @@ exports.applyLeave = async (req, res, next) => {
       })
         .populate("userId")
         .session(session);
+
+      const user = await User.findById(_id).session(session)
   
       if (!leave) {
         return next(createError(400, `Leave not found`));
@@ -149,6 +151,11 @@ exports.applyLeave = async (req, res, next) => {
           );
         }
       }
+      if(status == "approved"){
+        user.leaveTaken += days
+        await user.save()
+      }
+      
   
       await session.commitTransaction();
       session.endSession();

@@ -148,6 +148,7 @@ const UserSchema = new mongoose.Schema(
     checkInTime: { type: String },
     checkOutTime: { type: String },
     allotedLeave: { type: Number },
+    leaveTaken : {type : Number} ,
     workDuration: { type: Number },
     reportingManager: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     weekLeave: {
