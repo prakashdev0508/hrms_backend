@@ -2,7 +2,7 @@ const { User, Organization, Attendance , Leave  } = require("../models/mainModal
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
-const moment = require("moment"); // For date manipulations
+const moment = require('moment-timezone');
 
 const { createError, createSucces } = require("../utils/response");
 
@@ -251,7 +251,7 @@ exports.appUserDetails = async (req, res, next) => {
     const { _id, organizationId } = req.user;
     
     // Start date for today
-    const today = moment().startOf('day'); 
+    const today = moment().tz('Asia/Kolkata').startOf('day');
     
     // 1. Parallelize independent queries using Promise.all
     const [
