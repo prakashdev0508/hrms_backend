@@ -271,9 +271,16 @@ exports.applyRegularization = async (req, res, next) => {
     const { _id, organizationId } = req.user;
     const { date, reason, checkInTime, checkOutTime } = req.body;
 
+    const user = await User.findById(_id)
+
     if(moment(date).isAfter(moment())){
       return next(createError(400, "You cannot apply regularization request for a future date"));
     }
+
+    if(moment(date).isBefore(moment(user?.joinDate))){
+      return next(createError(400, "You cannot apply regularization request before joining date"));
+    }
+
 
     let attendance = await Attendance.findOne({
       organizationId,
@@ -329,6 +336,7 @@ exports.applyRegularization = async (req, res, next) => {
       status: "pending_regularize", // Set status to pending regularization
       isRegularized: true,
       regularizationReason: reason,
+      regularizeRequest : "pending"
     });
 
     await attendance.save();
