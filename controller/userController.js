@@ -248,64 +248,67 @@ exports.updateuser = async (req, res, next) => {
 
 exports.appUserDetails = async (req, res, next) => {
   try {
-    const { _id } = req.user;
+    const { _id, organizationId } = req.user;
     
-    // Find user
-    const user = await User.findById(_id).populate("organizationId");
-    const userDetails = await User.findById(_id).select("name email")
-    if (!user) {
-      return next(createError(404, "User not found"));
-    }
-        
-    const organizationId = user.organizationId._id;
+    // Start date for today
+    const today = moment().startOf('day'); 
     
-    // 1. Get today's attendance
-    const today = moment().startOf('day'); // Get start of today
-    const attendanceRecord = await Attendance.findOne({
-      userId: _id,
-      date: { $gte: today.toDate(), $lt: moment(today).endOf('day').toDate() },
-    }).select("status");
+    // 1. Parallelize independent queries using Promise.all
+    const [
+      userDetails, 
+      attendanceRecord, 
+      leavesApprovedCount, 
+      leavesRejectedCount, 
+      leavesPendingCount, 
+      organizationMembers,
+      regularizationsApprovedCount,
+      regularizationsPendingCount,
+      regularizationsRejectedCount
+    ] = await Promise.all([
+      User.findById(_id).select("name email allotedLeave"),  
+      Attendance.findOne({  
+        userId: _id,
+        date: { $gte: today.toDate(), $lt: moment(today).endOf('day').toDate() },
+      }).select("status"),
+      Leave.find({ userId: _id, status: "approved" }).countDocuments(), // Approved leaves
+      Leave.find({ userId: _id, status: "rejected" }).countDocuments(), // Rejected leaves
+      Leave.find({ userId: _id, status: "pending" }).countDocuments(),  // Pending leaves
+      User.find({ organizationId }).select("name email role is_active"),  // Organization members
+      Attendance.find({ userId: _id, isRegularized: true, regularizeRequest: "approved" }).countDocuments(),  // Approved regularizations
+      Attendance.find({ userId: _id, regularizeRequest: "pending" }).countDocuments(),  // Pending regularizations
+      Attendance.find({ userId: _id, regularizeRequest: "rejected" }).countDocuments()  // Rejected regularizations
+    ]);
 
+    // Attendance status
     const attendanceStatus = attendanceRecord ? attendanceRecord.status : "not_available";
-    const leavesApproved = await Leave.find({
-      userId: _id,
-      status: "approved",
-    }).countDocuments();
-    const leavesRejected = await Leave.find({
-      userId: _id,
-      status: "rejected",
-    }).countDocuments();
-
-    const leavesPending = await Leave.find({
-      userId: _id,
-      status: "pending",
-    }).countDocuments();
-
-    const totalAllottedLeave = user.allotedLeave || 0; 
-    const leavesLeft = totalAllottedLeave - leavesApproved;
-
-    // 3. Get all members in the organization
-    const organizationMembers = await User.find({
-      organizationId,
-    }).select("name email role is_active");
+    
+    // Leaves calculations
+    const totalAllottedLeave = userDetails.allotedLeave || 0; 
+    const leavesLeft = totalAllottedLeave - leavesApprovedCount;
 
     // Prepare the response data
     const appUserData = {
       attendanceStatus,
-      leaves : {
-        leavesApproved,
-        leavesRejected,
-        leavesLeft,
-        leavesPending
+      leaves: {
+        leavesApproved: leavesApprovedCount,
+        leavesRejected: leavesRejectedCount,
+        leavesPending: leavesPendingCount,
+        leavesLeft
+      },
+      regularizations: {
+        regularizationsApproved: regularizationsApprovedCount,
+        regularizationsRejected: regularizationsRejectedCount,
+        regularizationsPending: regularizationsPendingCount
       },
       userDetails,
       organizationMembers,
-      workinghours : {
-        checkinTime : user?.organizationId?.checkinTime,
-        checkoutTime : user?.organizationId?.checkoutTime
+      workinghours: {
+        checkinTime: userDetails?.organizationId?.checkinTime,
+        checkoutTime: userDetails?.organizationId?.checkoutTime
       }
     };
 
+    // Return success response
     return createSucces(res, 200, "User details retrieved successfully", appUserData);
   } catch (error) {
     console.log(error);

@@ -206,7 +206,13 @@ const AttendanceSchema = new mongoose.Schema(
     },
     // Regularization fields
     isRegularized: { type: Boolean, default: false },
-    regularizeRequest: { type: Boolean, default: false },
+    regularizeRequest: { type: String, 
+      enum : [
+        "approved",
+        "pending",
+        "rejected"
+      ]
+     },
     regularizationReason: { type: String },
     regularizedBy: {
       type: mongoose.Schema.Types.ObjectId,

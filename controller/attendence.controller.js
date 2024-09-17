@@ -308,7 +308,7 @@ exports.applyRegularization = async (req, res, next) => {
       attendance.regularizedCheckOutTime = checkOutTime || attendance.checkOutTime;
       attendance.status = "pending_regularize"; // Set status to pending regularization
       attendance.regularizationReason = reason || "";
-      attendance.regularizeRequest = true
+      attendance.regularizeRequest = "pending"
 
       await attendance.save();
       return createSucces(
@@ -376,6 +376,9 @@ exports.approveRegularization = async (req, res, next) => {
       attendance.checkInTime = attendance.regularizedCheckInTime
       attendance.checkOutTime = attendance.regularizedCheckOutTime
       attendance.isRegularized = true;
+      attendance.regularizeRequest = "approved"
+    }else{
+      attendance.regularizeRequest = "rejected"
     }
     // Update attendance status and save
     attendance.status = status
