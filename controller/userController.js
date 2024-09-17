@@ -265,7 +265,7 @@ exports.appUserDetails = async (req, res, next) => {
       regularizationsPendingCount,
       regularizationsRejectedCount
     ] = await Promise.all([
-      User.findById(_id).select("name email allotedLeave"),  
+      User.findById(_id).select("name email allotedLeave checkInTime checkOutTime"),  
       Attendance.findOne({  
         userId: _id,
         date: { $gte: today.toDate(), $lt: moment(today).endOf('day').toDate() },
@@ -301,11 +301,7 @@ exports.appUserDetails = async (req, res, next) => {
         regularizationsPending: regularizationsPendingCount
       },
       userDetails,
-      organizationMembers,
-      workinghours: {
-        checkinTime: userDetails?.organizationId?.checkinTime,
-        checkoutTime: userDetails?.organizationId?.checkoutTime
-      }
+      organizationMembers
     };
 
     // Return success response
