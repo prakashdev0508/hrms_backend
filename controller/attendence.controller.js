@@ -159,7 +159,7 @@ exports.checkOutAttendance = async (req, res, next) => {
     existingAttendance.workDuration = workDuration;
 
     if (workDuration < user?.workDuration) {
-      existingAttendance.status = "early";
+      existingAttendance.status = "half_day";
     } else {
       existingAttendance.status = "present";
     }
@@ -308,6 +308,7 @@ exports.applyRegularization = async (req, res, next) => {
       attendance.regularizedCheckOutTime = checkOutTime || attendance.checkOutTime;
       attendance.status = "pending_regularize"; // Set status to pending regularization
       attendance.regularizationReason = reason || "";
+      attendance.regularizeRequest = true
 
       await attendance.save();
       return createSucces(

@@ -1,11 +1,18 @@
 const { Leave, Attendance , User } = require("../models/mainModal");
 const { createError, createSucces } = require("../utils/response");
 const mongoose = require("mongoose");
+const moment =  require("moment")
 
 exports.applyLeave = async (req, res, next) => {
     try {
       const { _id, organizationId } = req.user;
       const { leaveType, startDate, endDate, reason } = req.body;
+
+      const user = await User.findById(_id)
+
+      if(moment(startDate).isBefore(moment(user.joinDate))){
+        return next(createError(400, "leave date is before of joining"));
+      }
   
       if (new Date(endDate) < new Date(startDate)) {
         return next(createError(400, "End date cannot be earlier than start date"));

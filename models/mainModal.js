@@ -186,7 +186,7 @@ const AttendanceSchema = new mongoose.Schema(
         "absent",
         "late",
         "on_leave",
-        "early",
+        "half_day",
         "paid_leave",
         "approved_regularise",
         "reject_regularise",
@@ -206,6 +206,7 @@ const AttendanceSchema = new mongoose.Schema(
     },
     // Regularization fields
     isRegularized: { type: Boolean, default: false },
+    regularizeRequest: { type: Boolean, default: false },
     regularizationReason: { type: String },
     regularizedBy: {
       type: mongoose.Schema.Types.ObjectId,
