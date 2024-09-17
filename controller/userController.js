@@ -289,16 +289,11 @@ exports.appUserDetails = async (req, res, next) => {
     // Prepare the response data
     const appUserData = {
       attendanceStatus,
-      leaves: {
-        leavesApproved: leavesApprovedCount,
-        leavesRejected: leavesRejectedCount,
-        leavesPending: leavesPendingCount,
-        leavesLeft
-      },
-      regularizations: {
-        regularizationsApproved: regularizationsApprovedCount,
-        regularizationsRejected: regularizationsRejectedCount,
-        regularizationsPending: regularizationsPendingCount
+      requests : {
+        allRequests : (leavesApprovedCount + leavesRejectedCount + leavesPendingCount) + (regularizationsApprovedCount + regularizationsRejectedCount +  regularizationsPendingCount) ,
+        pendingRequests : regularizationsPendingCount + leavesPendingCount,
+        approvedLeaves : leavesApprovedCount + regularizationsApprovedCount ,
+        rejectedRequests : leavesRejectedCount + regularizationsRejectedCount
       },
       userDetails,
       organizationMembers
