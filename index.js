@@ -12,6 +12,7 @@ const attendence = require("./routes/attendence.route");
 const leave = require("./routes/leave.route");
 const website = require("./website/routes/website.mainroute")
 const dashboard = require("./routes/crm.dashboard")
+const appRoute = require("./routes/app.routes")
 
 
 dotenv.config();
@@ -31,6 +32,7 @@ app.use("/api/v1/attendence", attendence);
 app.use("/api/v1/leave", leave);
 app.use("/api/v1/website", website);
 app.use("/api/v1/crm/dashboard", dashboard);
+app.use("/api/v1/app", appRoute);
 
 //Error Handling
 app.use((error, req, res, next) => {
