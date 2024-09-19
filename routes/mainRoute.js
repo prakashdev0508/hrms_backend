@@ -14,6 +14,7 @@ const {
   userDetail,
   updateuser,
   appUserDetails,
+  changeUserPassword,
 } = require("../controller/userController");
 const { verifyToken } = require("../utils/authentication");
 const {
@@ -46,6 +47,14 @@ router.put(
   checkPlanValidation,
   checkActiveUser,
   updateuser
+);
+
+router.put(
+  "/user/password/change_password",
+  verifyToken,
+  checkPlanValidation,
+  checkActiveUser,
+  changeUserPassword
 );
 
 module.exports = router;

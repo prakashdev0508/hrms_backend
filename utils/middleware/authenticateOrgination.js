@@ -24,8 +24,9 @@ exports.checkActiveUser = async(req, res, next)=>{
   try {
     const { _id } = req.user;
 
+    
     const user = await User.findById(_id)
-
+    
     if(user?.is_active){
       next()
     }else{

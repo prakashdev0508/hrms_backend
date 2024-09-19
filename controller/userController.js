@@ -1,8 +1,13 @@
-const { User, Organization, Attendance , Leave  } = require("../models/mainModal");
+const {
+  User,
+  Organization,
+  Attendance,
+  Leave,
+} = require("../models/mainModal");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
-const moment = require('moment-timezone');
+const moment = require("moment-timezone");
 
 const { createError, createSucces } = require("../utils/response");
 
@@ -249,62 +254,140 @@ exports.updateuser = async (req, res, next) => {
 exports.appUserDetails = async (req, res, next) => {
   try {
     const { _id, organizationId } = req.user;
-    
+
     // Start date for today
-    const today = moment().tz('Asia/Kolkata').startOf('day');
-    
+    const today = moment().tz("Asia/Kolkata").startOf("day");
+
     // 1. Parallelize independent queries using Promise.all
     const [
-      userDetails, 
-      attendanceRecord, 
-      leavesApprovedCount, 
-      leavesRejectedCount, 
-      leavesPendingCount, 
+      userDetails,
+      attendanceRecord,
+      leavesApprovedCount,
+      leavesRejectedCount,
+      leavesPendingCount,
       organizationMembers,
       regularizationsApprovedCount,
       regularizationsPendingCount,
-      regularizationsRejectedCount
+      regularizationsRejectedCount,
     ] = await Promise.all([
-      User.findById(_id).select("name email allotedLeave checkInTime checkOutTime leaveTaken"),  
-      Attendance.findOne({  
+      User.findById(_id).select(
+        "name email allotedLeave checkInTime checkOutTime leaveTaken"
+      ),
+      Attendance.findOne({
         userId: _id,
-        date: { $gte: today.toDate(), $lt: moment(today).endOf('day').toDate() },
+        date: {
+          $gte: today.toDate(),
+          $lt: moment(today).endOf("day").toDate(),
+        },
       }).select("status"),
       Leave.find({ userId: _id, status: "approved" }).countDocuments(),
       Leave.find({ userId: _id, status: "rejected" }).countDocuments(),
-      Leave.find({ userId: _id, status: "pending" }).countDocuments(), 
+      Leave.find({ userId: _id, status: "pending" }).countDocuments(),
       User.find({ organizationId }).select("name email role is_active"),
-      Attendance.find({ userId: _id, isRegularized: true, regularizeRequest: "approved" }).countDocuments(), 
-      Attendance.find({ userId: _id, regularizeRequest: "pending" }).countDocuments(),
-      Attendance.find({ userId: _id, regularizeRequest: "rejected" }).countDocuments() 
+      Attendance.find({
+        userId: _id,
+        isRegularized: true,
+        regularizeRequest: "approved",
+      }).countDocuments(),
+      Attendance.find({
+        userId: _id,
+        regularizeRequest: "pending",
+      }).countDocuments(),
+      Attendance.find({
+        userId: _id,
+        regularizeRequest: "rejected",
+      }).countDocuments(),
     ]);
 
     // Attendance status
-    const attendanceStatus = attendanceRecord ? attendanceRecord.status : "not_available";
-    
+    const attendanceStatus = attendanceRecord
+      ? attendanceRecord.status
+      : "not_available";
+
     // Leaves calculations
-    const totalAllottedLeave = userDetails.allotedLeave || 0; 
-    
+    const totalAllottedLeave = userDetails.allotedLeave || 0;
+
     // Prepare the response data
     const appUserData = {
       attendanceStatus,
-      requests : {
-        allRequests : (leavesApprovedCount + leavesRejectedCount + leavesPendingCount) + (regularizationsApprovedCount + regularizationsRejectedCount +  regularizationsPendingCount) ,
-        pendingRequests : regularizationsPendingCount + leavesPendingCount,
-        approvedLeaves : leavesApprovedCount + regularizationsApprovedCount ,
-        rejectedRequests : leavesRejectedCount + regularizationsRejectedCount
+      requests: {
+        allRequests:
+          leavesApprovedCount +
+          leavesRejectedCount +
+          leavesPendingCount +
+          (regularizationsApprovedCount +
+            regularizationsRejectedCount +
+            regularizationsPendingCount),
+        pendingRequests: regularizationsPendingCount + leavesPendingCount,
+        approvedLeaves: leavesApprovedCount + regularizationsApprovedCount,
+        rejectedRequests: leavesRejectedCount + regularizationsRejectedCount,
       },
       userDetails,
       organizationMembers,
       totalAllottedLeave,
-      leaveTaken : userDetails.leaveTaken || 0
+      leaveTaken: userDetails.leaveTaken || 0,
     };
 
     // Return success response
-    return createSucces(res, 200, "User details retrieved successfully", appUserData);
+    return createSucces(
+      res,
+      200,
+      "User details retrieved successfully",
+      appUserData
+    );
   } catch (error) {
     console.log(error);
     next(createError(500, error.message));
   }
 };
 
+exports.changeUserPassword = async (req, res, next) => {
+  try {
+    const { role, _id } = req.user;
+    const { currentPassword, newPassword, id } = req.body;
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      return next(createError(404, "User not found"));
+    }
+
+    if (_id != id) {
+      let validCall = false;
+
+      if (role === "super_admin") {
+        validCall = true;
+      }
+
+      if (!validCall) {
+        return next(
+          createError(403, "You are not authorized to change password")
+        );
+      }
+    }
+
+    if (currentPassword) {
+      const isPasswordMatch = await bcrypt.compare(
+        currentPassword,
+        user.password
+      );
+      if (!isPasswordMatch) {
+        return next(createError(403, "Current password is incorrect"));
+      }
+    }
+
+    const salt = bcrypt.genSaltSync(10);
+    const hashNewPassword = bcrypt.hashSync(newPassword, salt);
+
+    user.password = hashNewPassword;
+
+    // Update passwordChangedAt
+    user.passwordChangedAt = new Date();
+    await user.save();
+
+    return createSucces(res, 200, "Password updated successfully");
+  } catch (error) {
+    console.log(error);
+    next(createError(500, error.message));
+  }
+};

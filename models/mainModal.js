@@ -163,6 +163,7 @@ const UserSchema = new mongoose.Schema(
         "Saturday",
       ],
     },
+    passwordChangedAt: Date, 
   },
   { timestamps: true }
 );
