@@ -10,6 +10,7 @@ router.post('/check-out',  verifyToken , checkPlanValidation , checkActiveUser ,
 router.post('/monthly-list',  verifyToken , checkPlanValidation , checkActiveUser ,attendenceController.getMonthlyAttendanceDetails);
 router.post('/regularize/apply',  verifyToken , checkPlanValidation , checkActiveUser ,attendenceController.applyRegularization);
 router.post('/regularize/action',  verifyToken , checkPlanValidation , checkActiveUser ,attendenceController.approveRegularization);
+router.get('/regularize/list',  verifyToken , checkPlanValidation , checkActiveUser ,attendenceController.getRegularizedAttendanceList);
 
 
 module.exports = router;

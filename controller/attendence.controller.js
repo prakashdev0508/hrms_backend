@@ -404,6 +404,10 @@ exports.getRegularizedAttendanceList = async (req, res, next) => {
   try {
     const { _id, organizationId, role } = req.user;
 
+    if(role != "super_admin" && role != "reporting_manager"){
+      return next(createError(400 , "You are not authorized"))
+    }
+
     // Extract pagination, sorting, and filtering parameters
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
