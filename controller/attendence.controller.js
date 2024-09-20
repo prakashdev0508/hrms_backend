@@ -357,12 +357,13 @@ exports.approveRegularization = async (req, res, next) => {
   try {
     const { attendanceId, status } = req.body;
     const { _id: adminId, role } = req.user;
-
+    
+    console.log(attendanceId)
     // Find the attendance record
-    const attendance = await Attendance.findById(attendanceId).populate(
-      "userId",
-      "reportingManager"
-    );
+    const attendance = await Attendance.findById(attendanceId)
+
+
+
 
     if (!attendance || attendance.status !== "pending_regularize") {
       return next(createError(404, "Pending regularization not found"));
@@ -404,21 +405,18 @@ exports.getRegularizedAttendanceList = async (req, res, next) => {
   try {
     const { _id, organizationId, role } = req.user;
 
-    if(role != "super_admin" && role != "reporting_manager"){
-      return next(createError(400 , "You are not authorized"))
+    if (role != "super_admin" && role != "reporting_manager") {
+      return next(createError(400, "You are not authorized"));
     }
 
-    // Extract pagination, sorting, and filtering parameters
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const sortField = req.query.sortField || "createdAt";
     const sortOrder = req.query.sortOrder === "desc" ? -1 : 1;
-    const status = req.query.status || null;
+    const regularizeRequestStatus = req.query.status || "pending";
 
-    // Build the base query for regularized attendance
-    let query = { organizationId, isRegularized: true };
+    let query = { organizationId, regularizeRequest: { $exists: true } };
 
-    // Apply role-specific filters
     if (role === "reporting_manager") {
       const reportingManagerUserIds = await User.find({
         reportingManager: _id,
@@ -426,22 +424,21 @@ exports.getRegularizedAttendanceList = async (req, res, next) => {
       query.userId = { $in: reportingManagerUserIds.map((user) => user._id) };
     }
 
-    // Apply status filter if provided
-    if (status) {
-      query.status = status;
+    // Apply regularizeRequest status filter if provided
+    if (regularizeRequestStatus) {
+      query.regularizeRequest = regularizeRequestStatus;
     }
 
-    // Fetch regularized attendance records with pagination, sorting, and filtering
+    // Fetch the regularized attendance records
     const regularizedAttendances = await Attendance.find(query)
-      .populate("userId", "name email") // Populate user information if needed
-      .sort({ [sortField]: sortOrder })
-      .skip((page - 1) * limit)
-      .limit(limit);
+      .populate("userId", "name email") // Populate user details
+      .sort({ [sortField]: sortOrder }) // Sort based on the given field and order
+      .skip((page - 1) * limit) // Pagination skip
+      .limit(limit); // Pagination limit
 
-    // Count total documents for pagination
     const totalRegularizedAttendances = await Attendance.countDocuments(query);
 
-    // Return the paginated and filtered list
+    // Return the paginated list of regularized attendances
     res.status(200).json({
       page,
       limit,
@@ -454,3 +451,4 @@ exports.getRegularizedAttendanceList = async (req, res, next) => {
     next(createError(400, error));
   }
 };
+
