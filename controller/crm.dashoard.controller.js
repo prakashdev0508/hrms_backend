@@ -147,7 +147,7 @@ exports.getPendingCounts = async (req, res, next) => {
       query.userId = { $in: reportingManagerUserIds.map((user) => user._id) };
     }
     pendingRegularizationCount = await Attendance.countDocuments(query);
-    createSucces(res , 400 , "Side bar data" , {
+    createSucces(res , 200 , "Side bar data" , {
       pendingLeaves: pendingLeaveCount,
       pendingRegularizations: pendingRegularizationCount,
     })
