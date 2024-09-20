@@ -1,9 +1,13 @@
-const { Payment, Pricing, User } = require("../models/mainModal");
+const { Payment, Pricing, User , Leave , Attendance } = require("../models/mainModal");
 const { createError, createSucces } = require("../utils/response");
 
-exports.crmDashoardHome = async (req, res) => {
+exports.crmDashoardHome = async (req, res , next) => {
   try {
     const { _id, organizationId, role } = req.user;
+
+    if(role !== "super_admin" && role !== "reporting_manager"){
+      return next(createError(401 , "You are not authorized"))
+    }
 
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -50,7 +54,7 @@ exports.crmDashoardHome = async (req, res) => {
   }
 };
 
-exports.crmDashoardUser = async (req, res) => {
+exports.crmDashoardUser = async (req, res , next) => {
   try {
     const { _id, organizationId, role } = req.user;
 
@@ -60,6 +64,10 @@ exports.crmDashoardUser = async (req, res) => {
     const sortField = req.query.sortField || "createdAt";
     const sortOrder = req.query.sortOrder === "desc" ? -1 : 1;
     const filter = req.query.filter || {};
+
+    if(role !== "super_admin" && role !== "reporting_manager"){
+      return next(createError(401 , "You are not authorized"))
+    }
 
     // Build query
     let query = { organizationId: organizationId };
@@ -112,3 +120,40 @@ exports.crmDashoardUser = async (req, res) => {
     res.status(500).json({ message: "Server Error", error });
   }
 };
+
+exports.getPendingCounts = async (req, res, next) => {
+  try {
+    const { _id, organizationId, role } = req.user;
+
+    // Ensure that only super admins or reporting managers can access the counts
+    if (role !== "super_admin" && role !== "reporting_manager") {
+      return next(createError(400, "You are not authorized"));
+    }
+
+    // Initialize counts
+    let pendingLeaveCount = 0;
+    let pendingRegularizationCount = 0;
+
+    // Count pending leave requests
+    pendingLeaveCount = await Leave.countDocuments({
+      organizationId,
+      status: "pending",
+    });
+    let query = { organizationId, regularizeRequest: "pending" };
+    if (role === "reporting_manager") {
+      const reportingManagerUserIds = await User.find({
+        reportingManager: _id,
+      }).select("_id");
+      query.userId = { $in: reportingManagerUserIds.map((user) => user._id) };
+    }
+    pendingRegularizationCount = await Attendance.countDocuments(query);
+    res.status(200).json({
+      pendingLeaves: pendingLeaveCount,
+      pendingRegularizations: pendingRegularizationCount,
+    });
+  } catch (error) {
+    console.log(error);
+    next(createError(400, error));
+  }
+};
+
