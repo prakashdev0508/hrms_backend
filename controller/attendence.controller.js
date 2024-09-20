@@ -357,13 +357,8 @@ exports.approveRegularization = async (req, res, next) => {
   try {
     const { attendanceId, status } = req.body;
     const { _id: adminId, role } = req.user;
-    
-    console.log(attendanceId)
-    // Find the attendance record
+        // Find the attendance record
     const attendance = await Attendance.findById(attendanceId)
-
-
-
 
     if (!attendance || attendance.status !== "pending_regularize") {
       return next(createError(404, "Pending regularization not found"));
