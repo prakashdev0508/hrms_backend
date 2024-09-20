@@ -147,10 +147,10 @@ exports.getPendingCounts = async (req, res, next) => {
       query.userId = { $in: reportingManagerUserIds.map((user) => user._id) };
     }
     pendingRegularizationCount = await Attendance.countDocuments(query);
-    res.status(200).json({
+    createSucces(res , 400 , "Side bar data" , {
       pendingLeaves: pendingLeaveCount,
       pendingRegularizations: pendingRegularizationCount,
-    });
+    })
   } catch (error) {
     console.log(error);
     next(createError(400, error));
