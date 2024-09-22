@@ -172,14 +172,13 @@ exports.userDetail = async (req, res, next) => {
 
     // If no month and year are provided, default to the current month and year
     const currentYear = year ? parseInt(year) : moment().year();
-    const currentMonth = month ? parseInt(month) - 1 : moment().month(); // 0-based month index for JavaScript Date
+    const currentMonth = month ? parseInt(month) - 1 : moment().month();
 
-    // Find all attendance records for the user in the requested or current month
     const attendanceRecords = await Attendance.find({
       userId: id,
       date: {
-        $gte: new Date(currentYear, currentMonth, 1), // Start of the requested month
-        $lt: new Date(currentYear, currentMonth + 1, 1), // Start of the next month
+        $gte: new Date(currentYear, currentMonth, 1), 
+        $lt: new Date(currentYear, currentMonth + 1, 1), 
       },
     }).select("date status checkInTime checkOutTime");
 
@@ -203,7 +202,7 @@ exports.userDetail = async (req, res, next) => {
       if (!record) {
         attendanceData.push({
           date: currentDate,
-          status: "not available",
+          status: `${ moment(currentDate).isBefore(user.joinDate) ? "before_join"  : "not available"}`,
           checkInTime: null,
           checkOutTime: null,
         });
@@ -391,3 +390,78 @@ exports.changeUserPassword = async (req, res, next) => {
     next(createError(500, error.message));
   }
 };
+
+
+const ExcelJS = require("exceljs");
+exports.downloadUserAttendance = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { month, year } = req.query;
+
+    // Get user data
+    const user = await User.findById(id) 
+      .select("name email username role joinDate")
+      .populate("reportingManager", "name");
+
+    if (!user) {
+      return next(createError(404, "User not found"));
+    }
+
+    const currentYear = year ? parseInt(year) : moment().year();
+    const currentMonth = month ? parseInt(month) - 1 : moment().month();
+
+    // Fetch attendance records for the specified month
+    const attendanceRecords = await Attendance.find({
+      userId: id,
+      date: {
+        $gte: new Date(currentYear, currentMonth, 1),
+        $lt: new Date(currentYear, currentMonth + 1, 1),
+      },
+    }).select("date status checkInTime checkOutTime");
+
+    // Create an Excel workbook and worksheet
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Attendance");
+
+    // Add header row to the worksheet
+    worksheet.columns = [
+      { header: "Date", key: "date", width: 15 },
+      { header: "Status", key: "status", width: 15 },
+      { header: "Check-In Time", key: "checkInTime", width: 20 },
+      { header: "Check-Out Time", key: "checkOutTime", width: 20 },
+    ];
+
+    // Get all days in the specified month
+    const daysInMonth = moment({ year: currentYear, month: currentMonth }).daysInMonth();
+
+    // Loop through the days of the month to generate attendance data
+    for (let day = 1; day <= daysInMonth; day++) {
+      const currentDate = new Date(currentYear, currentMonth, day);
+      const record = attendanceRecords.find(attendance =>
+        moment(attendance.date).isSame(currentDate, "day")
+      );
+
+      // Push data to the worksheet
+      worksheet.addRow({
+        date: moment(currentDate).format("YYYY-MM-DD"),
+        status: record ? record.status : "not available",
+        checkInTime: record && record.checkInTime ? moment(record.checkInTime).format("HH:mm:ss") : "N/A",
+        checkOutTime: record && record.checkOutTime ? moment(record.checkOutTime).format("HH:mm:ss") : "N/A",
+      });
+    }
+
+    // Set the response headers to indicate a file download
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=${user.username}_attendance_${currentMonth + 1}_${currentYear}.xlsx`
+    );
+
+    // Write workbook to the response
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.log(error);
+    next(createError(500, error.message));
+  }
+};
+

@@ -15,6 +15,7 @@ const {
   updateuser,
   appUserDetails,
   changeUserPassword,
+  downloadUserAttendance,
 } = require("../controller/userController");
 const { verifyToken } = require("../utils/authentication");
 const {
@@ -40,6 +41,14 @@ router.get(
   checkPlanValidation,
   checkActiveUser,
   userDetail
+);
+
+router.get(
+  "/user/download/:id",
+  verifyToken,
+  checkPlanValidation,
+  checkActiveUser,
+  downloadUserAttendance
 );
 router.put(
   "/user/:id",

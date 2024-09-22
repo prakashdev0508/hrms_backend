@@ -148,7 +148,7 @@ exports.getPendingCounts = async (req, res, next) => {
     }
     pendingRegularizationCount = await Attendance.countDocuments(query);
     createSucces(res , 200 , "Side bar data" , {
-      pendingLeaves: pendingLeaveCount,
+      pendingLeaves: pendingLeaveCount, 
       pendingRegularizations: pendingRegularizationCount,
     })
   } catch (error) {
