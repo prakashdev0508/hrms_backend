@@ -20,22 +20,16 @@ exports.getRequestDetails = async (req, res, next) => {
       regularizationsPending,
       regularizationsRejected,
     ] = await Promise.all([
-      Leave.find({ userId: _id, status: "approved" }).populate(
-        "approvedBy" ,  "name "
-      ),
-      Leave.find({ userId: _id, status: "rejected" }).populate(
-        "approvedBy" ,  "name "
-      ),
+      Leave.find({ userId: _id, status: "approved" }),
+      Leave.find({ userId: _id, status: "rejected" }),
       Leave.find({ userId: _id, status: "pending" }),
       Attendance.find({
         userId: _id,
         isRegularized: true,
         regularizeRequest: "approved",
-      }).populate("approvedBy" ,  "name "),
+      }),
       Attendance.find({ userId: _id, regularizeRequest: "pending" }),
-      Attendance.find({ userId: _id, regularizeRequest: "rejected" }).populate(
-        "approvedBy" ,  "name "
-      ),
+      Attendance.find({ userId: _id, regularizeRequest: "rejected" }),
     ]);
 
     const requestData = {
