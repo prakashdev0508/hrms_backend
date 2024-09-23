@@ -197,7 +197,7 @@ exports.getLeaveList = async (req, res, next) => {
 
     // Fetch leaves with pagination, sorting, and filtering
     const leaves = await Leave.find(query)
-      .populate('userId', 'name email') // Populate user information if needed
+      .populate('userId', 'name email').populate("approvedBy" , "name")
       .sort({ [sortField]: sortOrder })
       .skip((page - 1) * limit)
       .limit(limit);
