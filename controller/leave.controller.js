@@ -184,7 +184,6 @@ exports.getLeaveList = async (req, res, next) => {
     // Build the base query
     let query = { organizationId };
 
-    // Apply role-specific filters
     if (role == 'reporting_manager') {
       const reportingManagerUserIds = await User.find({ reportingManager: _id }).select('_id');
       query.userId = { $in: reportingManagerUserIds.map(user => user._id) };

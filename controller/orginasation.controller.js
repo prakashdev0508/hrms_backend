@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
+const moment = require("moment")
 
 // Create Organization
 exports.createOrganization = async (req, res, next) => {
@@ -172,5 +173,70 @@ exports.deleteOrganization = async (req, res, next) => {
     );
   } catch (error) {
     return next(createError(400, error));
+  }
+};
+
+// Function to upload multiple holidays for an organization
+exports.uploadHolidays = async (req, res, next) => {
+  try {
+    const { organizationId } = req.user;
+    const { holidays } = req.body;
+
+    if (!holidays || !Array.isArray(holidays)) {
+      return next(
+        createError(
+          400,
+          "Invalid holidays data. Please provide an array of holidays."
+        )
+      );
+    }
+
+    holidays.forEach((holiday) => {
+      if (
+        !holiday.name ||
+        !holiday.startDate ||
+        !holiday.endDate ||
+        !moment(holiday.startDate, "YYYY-MM-DD", true).isValid() ||
+        !moment(holiday.endDate, "YYYY-MM-DD", true).isValid()
+      ) {
+        return next(
+          createError(
+            400,
+            "Invalid holiday object. Each holiday must have a name, startDate, and endDate."
+          )
+        );
+      }
+
+      if (moment(holiday.startDate).isAfter(holiday.endDate)) {
+        return next(
+          createError(400, "The holiday startDate cannot be after the endDate.")
+        );
+      }
+    });
+
+    const organization = await Organization.findById(organizationId);
+
+    if (!organization) {
+      return next(createError(404, "Organization not found"));
+    }
+
+    holidays.forEach((holiday) => {
+      const newHoliday = {
+        name: holiday.name,
+        startDate: holiday.startDate,
+        endDate: holiday.endDate,
+      };
+      organization.holidays.push(newHoliday);
+    });
+
+    await organization.save();
+
+    res.status(200).json({
+      message: "Holidays uploaded successfully",
+      holidays: organization.holidays,
+    });
+  } catch (error) {
+    console.error(error);
+    next(createError(500, error.message));
   }
 };

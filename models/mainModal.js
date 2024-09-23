@@ -41,6 +41,13 @@ const OrganizationSchema = new mongoose.Schema(
         "Saturday",
       ],
     },
+    holidays: [
+      {
+        name: { type: String },
+        startDate: { type: Date },
+        endDate: { type: Date },
+      },
+    ],
   },
   { timestamps: true }
 );
@@ -139,7 +146,7 @@ const UserSchema = new mongoose.Schema(
     password: { type: String, required: true },
     role: {
       type: String,
-      enum: [ "employee", "super_admin" , "reporting_manager"],
+      enum: ["employee", "super_admin", "reporting_manager"],
       required: true,
     },
     is_active: { type: Boolean, default: true },
@@ -148,7 +155,7 @@ const UserSchema = new mongoose.Schema(
     checkInTime: { type: String },
     checkOutTime: { type: String },
     allotedLeave: { type: Number },
-    leaveTaken : {type : Number} ,
+    leaveTaken: { type: Number },
     workDuration: { type: Number },
     reportingManager: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     weekLeave: {
@@ -163,7 +170,7 @@ const UserSchema = new mongoose.Schema(
         "Saturday",
       ],
     },
-    passwordChangedAt: Date, 
+    passwordChangedAt: Date,
   },
   { timestamps: true }
 );
@@ -208,13 +215,10 @@ const AttendanceSchema = new mongoose.Schema(
     },
     // Regularization fields
     isRegularized: { type: Boolean, default: false },
-    regularizeRequest: { type: String, 
-      enum : [
-        "approved",
-        "pending",
-        "rejected"
-      ]
-     },
+    regularizeRequest: {
+      type: String,
+      enum: ["approved", "pending", "rejected"],
+    },
     regularizationReason: { type: String },
     regularizedBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -225,7 +229,6 @@ const AttendanceSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
 
 // Leave Schema
 const LeaveSchema = new mongoose.Schema(

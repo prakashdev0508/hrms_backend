@@ -164,7 +164,8 @@ exports.userDetail = async (req, res, next) => {
       .select(
         "name is_active weekLeave createdAt username role email salary joinDate checkInTime checkOutTime"
       )
-      .populate("reportingManager", "name");
+      .populate("reportingManager", "name")
+      .populate("organizationId", "holidays weakHoliday");
 
     if (!user) {
       return next(createError(404, "User not found"));
@@ -174,35 +175,60 @@ exports.userDetail = async (req, res, next) => {
     const currentYear = year ? parseInt(year) : moment().year();
     const currentMonth = month ? parseInt(month) - 1 : moment().month();
 
+    // Get attendance records for the user for the specified month
     const attendanceRecords = await Attendance.find({
       userId: id,
       date: {
-        $gte: new Date(currentYear, currentMonth, 1), 
-        $lt: new Date(currentYear, currentMonth + 1, 1), 
+        $gte: new Date(currentYear, currentMonth, 1),
+        $lt: new Date(currentYear, currentMonth + 1, 1),
       },
     }).select("date status checkInTime checkOutTime");
+
+    // Get the organization's holidays
+    const organization = await Organization.findById(user.organizationId);
+    const holidays = organization.holidays;
 
     // Get all days in the requested or current month
     const daysInMonth = moment({
       year: currentYear,
       month: currentMonth,
     }).daysInMonth();
+    
     let attendanceData = [];
 
     // Loop through all days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const currentDate = new Date(currentYear, currentMonth, day);
+      const isHoliday = holidays.some(
+        (holiday) =>
+          moment(currentDate).isBetween(
+            moment(holiday.startDate),
+            moment(holiday.endDate),
+            "day",
+            "[]"
+          )
+      );
+      
+      const isWeekend = user.weekLeave === moment(currentDate).format('dddd');
 
       // Find if there's an attendance record for the current date
       const record = attendanceRecords.find((attendance) =>
         moment(attendance.date).isSame(currentDate, "day")
       );
 
-      // If no record exists, mark it as "not available"
+      // If no record exists, mark it as "not available" or "holiday"
       if (!record) {
         attendanceData.push({
           date: currentDate,
-          status: `${ moment(currentDate).isBefore(user.joinDate) ? "before_join"  : "not available"}`,
+          status: `${
+            moment(currentDate).isBefore(user.joinDate)
+              ? "before_join"
+              : isHoliday
+              ? "holiday"
+              : isWeekend
+              ? "weekend"
+              : "not available"
+          }`,
           checkInTime: null,
           checkOutTime: null,
         });
@@ -228,6 +254,7 @@ exports.userDetail = async (req, res, next) => {
     next(createError(500, error.message));
   }
 };
+
 
 //Update user
 exports.updateuser = async (req, res, next) => {
