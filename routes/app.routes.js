@@ -7,4 +7,7 @@ const { checkPlanValidation, checkActiveUser } = require('../utils/middleware/au
 
 router.get("/request_data", verifyToken , checkPlanValidation , checkActiveUser , appController.getRequestDetails)
 
+
+router.get("/user_details", verifyToken , checkPlanValidation , checkActiveUser , appController.getUserDetails)
+
 module.exports = router;

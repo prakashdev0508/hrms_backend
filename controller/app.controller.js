@@ -52,3 +52,25 @@ exports.getRequestDetails = async (req, res, next) => {
     next(createError(500, error.message));
   }
 };
+
+exports.getUserDetails = async (req, res, next) => {
+  try {
+    const { _id, organizationId, role } = req.user;
+
+    const user = await User.findById(_id)
+      .select(
+        "name username organizationId weekLeave allotedLeave salary joinDate leaveTaken workDuration reportingManager"
+      )
+      .populate("reportingManager", "name")
+      .populate("organizationId", "name");
+
+    if (!user) {
+      return next(createError(404, "User not found"));
+    }
+
+    createSucces(res, 200, "user details", user);
+  } catch (error) {
+    console.log(error);
+    return next(createError(400, error));
+  }
+};
