@@ -16,6 +16,7 @@ const {
   appUserDetails,
   changeUserPassword,
   downloadUserAttendance,
+  calculateSalary,
 } = require("../controller/userController");
 const { verifyToken } = require("../utils/authentication");
 const {
@@ -49,6 +50,14 @@ router.get(
   checkPlanValidation,
   checkActiveUser,
   downloadUserAttendance
+);
+
+router.get(
+  "/user/calculate/salary",
+  verifyToken,
+  checkPlanValidation,
+  checkActiveUser,
+  calculateSalary
 );
 router.put(
   "/user/:id",

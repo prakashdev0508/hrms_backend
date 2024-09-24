@@ -6,7 +6,7 @@ const {
 } = require("../models/mainModal");
 
 const { createError, createSucces } = require("../utils/response");
-const moment = require("moment");
+const moment = require("moment-timezone");
 
 exports.getRequestDetails = async (req, res, next) => {
   try {
@@ -53,73 +53,104 @@ exports.getRequestDetails = async (req, res, next) => {
   }
 };
 
+
 exports.getUserDetails = async (req, res, next) => {
   try {
-    const { _id, organizationId, role } = req.user;
+    const { _id } = req.user;
     const { month, year } = req.body;
-    
+
     const user = await User.findById(_id)
       .select(
         "name username organizationId weekLeave allotedLeave salary joinDate leaveTaken workDuration reportingManager"
       )
       .populate("reportingManager", "name")
-      .populate("organizationId", "name");
+      .populate("organizationId", "name holidays");
 
     if (!user) {
       return next(createError(404, "User not found"));
     }
 
-    
-    const currentYear = year ? parseInt(year) : moment().year();
-    const currentMonth = month ? parseInt(month) - 1 : moment().month();
+    const currentYear = year ? parseInt(year) : moment().tz("Asia/Kolkata").year();
+    const currentMonth = month ? parseInt(month) - 1 : moment().tz("Asia/Kolkata").month();
+
+    const startOfMonth = moment.tz([currentYear, currentMonth, 1], "Asia/Kolkata").startOf('day').toDate();
+    const endOfMonth = moment.tz([currentYear, currentMonth + 1, 1], "Asia/Kolkata").startOf('day').toDate();
+
+    console.log(startOfMonth)
+
     const attendanceRecords = await Attendance.find({
       userId: _id,
       date: {
-        $gte: new Date(currentYear, currentMonth, 1), 
-        $lt: new Date(currentYear, currentMonth + 1, 1), 
+        $gte: startOfMonth,
+        $lt: endOfMonth,
       },
     }).select("date status checkInTime checkOutTime");
 
+    const holidays = user.organizationId.holidays || [];
 
+    const daysInMonth = moment({
+      year: currentYear,
+      month: currentMonth,
+    }).daysInMonth();
+    
+    let attendanceData = [];
+    let holidayCount = 0;
+    let presentCount = 0;
+    let absentCount = 0;
 
-        // Get all days in the requested or current month
-        const daysInMonth = moment({
-          year: currentYear,
-          month: currentMonth,
-        }).daysInMonth();
-        let attendanceData = [];
-    
-        // Loop through all days of the month
-        for (let day = 1; day <= daysInMonth; day++) {
-          const currentDate = new Date(currentYear, currentMonth, day);
-    
-          // Find if there's an attendance record for the current date
-          const record = attendanceRecords.find((attendance) =>
-            moment(attendance.date).isSame(currentDate, "day")
-          );
-    
-          // If no record exists, mark it as "not available"
-          if (!record) {
-            attendanceData.push({ 
-              date: currentDate,
-              status: `${ moment(currentDate).isBefore(user.joinDate) ? "before_join"  : "not available"}`,
-              checkInTime: null,
-              checkOutTime: null,
-            });
-          } else {
-            attendanceData.push({
-              date: record.date,
-              status: record.status,
-              checkInTime: record.checkInTime,
-              checkOutTime: record.checkOutTime,
-            });
-          }
-        }
-    
+    for (let day = 1; day <= daysInMonth; day++) {
+      const currentDate = moment.tz([currentYear, currentMonth, day], "Asia/Kolkata").startOf('day');
 
-    createSucces(res, 200, "user details", {user , attendanceData});
+      const isHoliday = holidays.some(
+        (holiday) =>
+          currentDate.isSame(moment.tz(holiday.startDate, "Asia/Kolkata").startOf('day'), 'day') &&
+          currentDate.isSame(moment.tz(holiday.endDate, "Asia/Kolkata").startOf('day'), 'day')
+      );
+
+      const record = attendanceRecords.find((attendance) =>
+        moment(attendance.date).tz("Asia/Kolkata").isSame(currentDate, "day")
+      );
+
+      if (isHoliday) {
+        holidayCount++;
+        attendanceData.push({
+          date: currentDate.toDate(),
+          status: "holiday",
+          checkInTime: null,
+          checkOutTime: null,
+        });
+      } else if (!record) {
+        attendanceData.push({
+          date: currentDate.toDate(),
+          status: moment(currentDate).isBefore(user.joinDate)
+            ? "before_join"
+            : "not available",
+          checkInTime: null,
+          checkOutTime: null,
+        });
+      } else {
+        if (record.status === "present") presentCount++;
+        if (record.status === "absent") absentCount++;
+
+        attendanceData.push({
+          date: record.date,
+          status: record.status,
+          checkInTime: record.checkInTime,
+          checkOutTime: record.checkOutTime,
+        });
+      }
+    }
+
+    createSucces(res, 200, "User details", {
+      user,
+      attendanceData,
+      presentCount,
+      absentCount,
+      holidayCount,
+    });
   } catch (error) {
     console.log(error);
     return next(createError(400, error));
   }
 };
+

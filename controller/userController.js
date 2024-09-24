@@ -39,8 +39,6 @@ exports.register = async (req, res, next) => {
       return next(createError(404, "Organization not found"));
     }
 
-    console.log(organisation);
-
     const checkInDate = checkInTime
       ? new Date(`1970-01-01T${checkInTime}:00Z`)
       : new Date(`1970-01-01T${organisation?.checkinTime}:00Z`);
@@ -225,8 +223,6 @@ exports.userDetail = async (req, res, next) => {
               ? "before_join"
               : isHoliday
               ? "holiday"
-              : isWeekend
-              ? "weekend"
               : "not available"
           }`,
           checkInTime: null,
@@ -488,6 +484,106 @@ exports.downloadUserAttendance = async (req, res, next) => {
     res.end();
   } catch (error) {
     console.log(error);
+    next(createError(500, error.message));
+  }
+};
+
+
+exports.calculateSalary = async (req, res, next) => {
+  try {
+    const { _id , role } = req.user;
+    const { year, month  , userId} = req.body;
+
+
+    const user = await User.findById(userId).select("salary weekLeave joinDate organizationId");
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const organization = await Organization.findById(user.organizationId).select("holidays weakHoliday");
+    if (!organization) {
+      throw new Error("Organization not found");
+    }
+
+    const currentYear = year ? parseInt(year) : moment().year();
+    const currentMonth = month ? parseInt(month) - 1 : moment().month();
+
+    const attendanceRecords = await Attendance.find({
+      userId,
+      date: {
+        $gte: new Date(currentYear, currentMonth, 1),
+        $lt: new Date(currentYear, currentMonth + 1, 1),
+      },
+    });
+
+    const daysInMonth = moment({ year: currentYear, month: currentMonth }).daysInMonth();
+    const weekLeave = user.weakHoliday;
+
+    let paidDays = 0;
+    let halfDays = 0;
+    let unpaidDays = 0;
+
+    // Iterate through each day of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const currentDate = new Date(currentYear, currentMonth, day);
+      const dayOfWeek = moment(currentDate).format("dddd");
+
+      // Check if it's a holiday
+      const isHoliday = organization.holidays.some((holiday) => 
+        moment(currentDate).isBetween(holiday.startDate, holiday.endDate, null, "[]")
+      );
+
+      // Check if it's a week leave
+      const isWeekLeave = dayOfWeek === weekLeave;
+
+      // Find attendance record for the current day
+      const record = attendanceRecords.find((attendance) =>
+        moment(attendance.date).isSame(currentDate, "day")
+      );
+
+      if (!record) {
+        if (!isHoliday && !isWeekLeave && moment(currentDate).isAfter(user.joinDate)) {
+          unpaidDays++;
+        }
+        continue;
+      }
+
+      switch (record.status) {
+        case "present":
+        case "late":
+        case "on_leave":
+        case "approved_regularise":
+          paidDays++;
+          break;
+        case "half_day":
+          halfDays++;
+          break;
+        case "absent":
+        case "reject_regularise":
+        case "pending_regularize":
+        case "paid_leave":
+          unpaidDays++;
+          break;
+        default:
+          if (!isHoliday && !isWeekLeave) unpaidDays++;
+      }
+    }
+
+    const totalPaidDays = paidDays + halfDays / 2;
+    const workingDaysInMonth = daysInMonth - organization.holidays.length - (weekLeave ? 4 : 0);
+
+    const dailySalary = user.salary / workingDaysInMonth;
+    const finalSalary = totalPaidDays * dailySalary;
+
+    return res.status(200).json({
+      fullSalary: user.salary,
+      finalSalary: Math.round(finalSalary),
+      paidDays,
+      halfDays,
+      unpaidDays,
+    });
+  } catch (error) {
+    console.error("Error calculating salary:", error);
     next(createError(500, error.message));
   }
 };
