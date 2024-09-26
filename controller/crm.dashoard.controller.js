@@ -1,6 +1,22 @@
 const { Payment, Pricing, User , Leave , Attendance } = require("../models/mainModal");
 const { createError, createSucces } = require("../utils/response");
 
+exports.crmDashoard = async(req, res , next)=>{
+  try {
+
+    const { _id, organizationId, role } = req.user;
+    
+    if(role != "super_admin" ){
+      next(createError(401 , "You are not authorized"))
+    }
+
+    
+    
+  } catch (error) {
+    
+  }
+}
+
 exports.crmDashoardHome = async (req, res , next) => {
   try {
     const { _id, organizationId, role } = req.user;
