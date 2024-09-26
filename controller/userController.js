@@ -169,7 +169,6 @@ exports.userDetail = async (req, res, next) => {
       return next(createError(404, "User not found"));
     }
 
-    // If no month and year are provided, default to the current month and year
     const currentYear = year ? parseInt(year) : moment().year();
     const currentMonth = month ? parseInt(month) - 1 : moment().month();
 
@@ -191,30 +190,29 @@ exports.userDetail = async (req, res, next) => {
       year: currentYear,
       month: currentMonth,
     }).daysInMonth();
-    
+
     let attendanceData = [];
 
     // Loop through all days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const currentDate = new Date(currentYear, currentMonth, day);
-      const isHoliday = holidays.some(
-        (holiday) =>
-          moment(currentDate).isBetween(
-            moment(holiday.startDate),
-            moment(holiday.endDate),
-            "day",
-            "[]"
-          )
+      const isHoliday = holidays.some((holiday) =>
+        moment(currentDate).isBetween(
+          moment(holiday.startDate),
+          moment(holiday.endDate),
+          "day",
+          "[]"
+        )
       );
-      
-      const isWeekend = user.weekLeave === moment(currentDate).format('dddd');
+
+      const isWeekend = user.weekLeave === moment(currentDate).format("dddd");
 
       // Find if there's an attendance record for the current date
       const record = attendanceRecords.find((attendance) =>
         moment(attendance.date).isSame(currentDate, "day")
       );
 
-      // If no record exists, mark it as "not available" or "holiday"
+      // If no record exists, mark it as "absent" or "holiday"
       if (!record) {
         attendanceData.push({
           date: currentDate,
@@ -223,7 +221,9 @@ exports.userDetail = async (req, res, next) => {
               ? "before_join"
               : isHoliday
               ? "holiday"
-              : "not available"
+              : moment(currentDate).isSameOrAfter(moment())
+              ? "not available"
+              : "absent"
           }`,
           checkInTime: null,
           checkOutTime: null,
@@ -250,7 +250,6 @@ exports.userDetail = async (req, res, next) => {
     next(createError(500, error.message));
   }
 };
-
 
 //Update user
 exports.updateuser = async (req, res, next) => {
@@ -414,7 +413,6 @@ exports.changeUserPassword = async (req, res, next) => {
   }
 };
 
-
 const ExcelJS = require("exceljs");
 exports.downloadUserAttendance = async (req, res, next) => {
   try {
@@ -422,7 +420,7 @@ exports.downloadUserAttendance = async (req, res, next) => {
     const { month, year } = req.query;
 
     // Get user data
-    const user = await User.findById(id) 
+    const user = await User.findById(id)
       .select("name email username role joinDate")
       .populate("reportingManager", "name");
 
@@ -455,12 +453,15 @@ exports.downloadUserAttendance = async (req, res, next) => {
     ];
 
     // Get all days in the specified month
-    const daysInMonth = moment({ year: currentYear, month: currentMonth }).daysInMonth();
+    const daysInMonth = moment({
+      year: currentYear,
+      month: currentMonth,
+    }).daysInMonth();
 
     // Loop through the days of the month to generate attendance data
     for (let day = 1; day <= daysInMonth; day++) {
       const currentDate = new Date(currentYear, currentMonth, day);
-      const record = attendanceRecords.find(attendance =>
+      const record = attendanceRecords.find((attendance) =>
         moment(attendance.date).isSame(currentDate, "day")
       );
 
@@ -468,15 +469,23 @@ exports.downloadUserAttendance = async (req, res, next) => {
       worksheet.addRow({
         date: moment(currentDate).format("YYYY-MM-DD"),
         status: record ? record.status : "not available",
-        checkInTime: record && record.checkInTime ? moment(record.checkInTime).format("HH:mm:ss") : "N/A",
-        checkOutTime: record && record.checkOutTime ? moment(record.checkOutTime).format("HH:mm:ss") : "N/A",
+        checkInTime:
+          record && record.checkInTime
+            ? moment(record.checkInTime).format("HH:mm:ss")
+            : "N/A",
+        checkOutTime:
+          record && record.checkOutTime
+            ? moment(record.checkOutTime).format("HH:mm:ss")
+            : "N/A",
       });
     }
 
     // Set the response headers to indicate a file download
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=${user.username}_attendance_${currentMonth + 1}_${currentYear}.xlsx`
+      `attachment; filename=${user.username}_attendance_${
+        currentMonth + 1
+      }_${currentYear}.xlsx`
     );
 
     // Write workbook to the response
@@ -488,19 +497,21 @@ exports.downloadUserAttendance = async (req, res, next) => {
   }
 };
 
-
 exports.calculateSalary = async (req, res, next) => {
   try {
-    const { _id , role } = req.user;
-    const { year, month  , userId} = req.body;
+    const { _id, role } = req.user;
+    const { year, month, userId } = req.body;
 
-
-    const user = await User.findById(userId).select("salary weekLeave joinDate organizationId");
+    const user = await User.findById(userId).select(
+      "salary weekLeave joinDate organizationId"
+    );
     if (!user) {
       throw new Error("User not found");
     }
 
-    const organization = await Organization.findById(user.organizationId).select("holidays weakHoliday");
+    const organization = await Organization.findById(
+      user.organizationId
+    ).select("holidays weakHoliday");
     if (!organization) {
       throw new Error("Organization not found");
     }
@@ -516,7 +527,10 @@ exports.calculateSalary = async (req, res, next) => {
       },
     });
 
-    const daysInMonth = moment({ year: currentYear, month: currentMonth }).daysInMonth();
+    const daysInMonth = moment({
+      year: currentYear,
+      month: currentMonth,
+    }).daysInMonth();
     const weekLeave = user.weakHoliday;
 
     let paidDays = 0;
@@ -529,8 +543,13 @@ exports.calculateSalary = async (req, res, next) => {
       const dayOfWeek = moment(currentDate).format("dddd");
 
       // Check if it's a holiday
-      const isHoliday = organization.holidays.some((holiday) => 
-        moment(currentDate).isBetween(holiday.startDate, holiday.endDate, null, "[]")
+      const isHoliday = organization.holidays.some((holiday) =>
+        moment(currentDate).isBetween(
+          holiday.startDate,
+          holiday.endDate,
+          null,
+          "[]"
+        )
       );
 
       // Check if it's a week leave
@@ -542,7 +561,11 @@ exports.calculateSalary = async (req, res, next) => {
       );
 
       if (!record) {
-        if (!isHoliday && !isWeekLeave && moment(currentDate).isAfter(user.joinDate)) {
+        if (
+          !isHoliday &&
+          !isWeekLeave &&
+          moment(currentDate).isAfter(user.joinDate)
+        ) {
           unpaidDays++;
         }
         continue;
@@ -570,7 +593,8 @@ exports.calculateSalary = async (req, res, next) => {
     }
 
     const totalPaidDays = paidDays + halfDays / 2;
-    const workingDaysInMonth = daysInMonth - organization.holidays.length - (weekLeave ? 4 : 0);
+    const workingDaysInMonth =
+      daysInMonth - organization.holidays.length - (weekLeave ? 4 : 0);
 
     const dailySalary = user.salary / workingDaysInMonth;
     const finalSalary = totalPaidDays * dailySalary;
@@ -587,4 +611,3 @@ exports.calculateSalary = async (req, res, next) => {
     next(createError(500, error.message));
   }
 };
-
