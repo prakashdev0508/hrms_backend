@@ -290,7 +290,7 @@ exports.updateuser = async (req, res, next) => {
     return next(createError(400, error));
   }
 };
-
+ 
 exports.appUserDetails = async (req, res, next) => {
   try {
     const { _id, organizationId } = req.user;
