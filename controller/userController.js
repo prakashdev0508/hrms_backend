@@ -8,6 +8,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const moment = require("moment-timezone");
+const ExcelJS = require("exceljs");
 
 const { createError, createSucces } = require("../utils/response");
 
@@ -155,6 +156,30 @@ exports.me = async (req, res, next) => {
 exports.userDetail = async (req, res, next) => {
   try {
     const { id } = req.params;
+
+    // Get user data with reporting manager populated
+    const user = await User.findById(id)
+      .select(
+        "name is_active weekLeave createdAt username role email salary joinDate checkInTime checkOutTime"
+      )
+      .populate("reportingManager", "name")
+      .populate("organizationId", "holidays weakHoliday");
+
+    // Attach the attendance data to the response
+    const userDetails = {
+      ...user._doc,
+    };
+
+    createSucces(res, 200, "User details retrieved successfully", userDetails);
+  } catch (error) {
+    console.log(error);
+    next(createError(500, error.message));
+  }
+};
+
+exports.userAttendance = async (req, res, next) => {
+  try {
+    const { id } = req.params;
     const { month, year } = req.query;
 
     // Get user data with reporting manager populated
@@ -205,8 +230,6 @@ exports.userDetail = async (req, res, next) => {
         )
       );
 
-      const isWeekend = user.weekLeave === moment(currentDate).format("dddd");
-
       // Find if there's an attendance record for the current date
       const record = attendanceRecords.find((attendance) =>
         moment(attendance.date).isSame(currentDate, "day")
@@ -240,15 +263,11 @@ exports.userDetail = async (req, res, next) => {
 
     // Attach the attendance data to the response
     const userDetails = {
-      ...user._doc,
       attendance: attendanceData,
     };
 
     createSucces(res, 200, "User details retrieved successfully", userDetails);
-  } catch (error) {
-    console.log(error);
-    next(createError(500, error.message));
-  }
+  } catch (error) {}
 };
 
 //Update user
@@ -413,16 +432,18 @@ exports.changeUserPassword = async (req, res, next) => {
   }
 };
 
-const ExcelJS = require("exceljs");
 exports.downloadUserAttendance = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { month, year } = req.query;
 
-    // Get user data
+    // Get user data with organization and reporting manager populated
     const user = await User.findById(id)
-      .select("name email username role joinDate")
-      .populate("reportingManager", "name");
+      .select(
+        "name is_active weekLeave createdAt username role email salary joinDate checkInTime checkOutTime"
+      )
+      .populate("reportingManager", "name")
+      .populate("organizationId", "holidays weekHoliday");
 
     if (!user) {
       return next(createError(404, "User not found"));
@@ -439,6 +460,10 @@ exports.downloadUserAttendance = async (req, res, next) => {
         $lt: new Date(currentYear, currentMonth + 1, 1),
       },
     }).select("date status checkInTime checkOutTime");
+
+    // Get the organization's holidays
+    const organization = await Organization.findById(user.organizationId);
+    const holidays = organization.holidays;
 
     // Create an Excel workbook and worksheet
     const workbook = new ExcelJS.Workbook();
@@ -461,14 +486,33 @@ exports.downloadUserAttendance = async (req, res, next) => {
     // Loop through the days of the month to generate attendance data
     for (let day = 1; day <= daysInMonth; day++) {
       const currentDate = new Date(currentYear, currentMonth, day);
+      const isHoliday = holidays.some((holiday) =>
+        moment(currentDate).isBetween(
+          moment(holiday.startDate),
+          moment(holiday.endDate),
+          "day",
+          "[]"
+        )
+      );
+
+      // Find the attendance record for the current date
       const record = attendanceRecords.find((attendance) =>
         moment(attendance.date).isSame(currentDate, "day")
       );
 
+      // Determine if the user joined by the current date
+      const isJoined = moment(currentDate).isSameOrAfter(user.joinDate, "day");
+
       // Push data to the worksheet
       worksheet.addRow({
         date: moment(currentDate).format("YYYY-MM-DD"),
-        status: record ? record.status : "not available",
+        status: isHoliday
+          ? "holiday"
+          : record
+          ? record.status
+          : isJoined
+          ? "absent"
+          : "not available",
         checkInTime:
           record && record.checkInTime
             ? moment(record.checkInTime).format("HH:mm:ss")
@@ -496,6 +540,8 @@ exports.downloadUserAttendance = async (req, res, next) => {
     next(createError(500, error.message));
   }
 };
+
+
 
 exports.calculateSalary = async (req, res, next) => {
   try {
