@@ -129,6 +129,7 @@ exports.login = async (req, res, next) => {
       token,
       role: user.role,
       organizationId: user.organizationId,
+      _id: user._id
     });
   } catch (error) {
     next(createError(403, error));
