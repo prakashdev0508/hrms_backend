@@ -145,7 +145,7 @@ exports.checkOutAttendance = async (req, res, next) => {
     }
 
     existingAttendance.checkOutTime = Date.now();
-    existingAttendance.checkOutlocation = location;
+    existingAttendance.checkOutLocation = location;
 
     const user = await User.findById(_id);
 
