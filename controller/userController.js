@@ -28,6 +28,7 @@ exports.register = async (req, res, next) => {
       reportingManager,
       joinDate,
       salary,
+      mobileNumber
     } = req.body;
 
     // Generate salt and hash password
@@ -66,6 +67,7 @@ exports.register = async (req, res, next) => {
       reportingManager,
       joinDate,
       salary,
+      mobileNumber
     });
 
     // Save the user
@@ -161,7 +163,7 @@ exports.userDetail = async (req, res, next) => {
     // Get user data with reporting manager populated
     const user = await User.findById(id)
       .select(
-        "name is_active weekLeave createdAt username role email salary joinDate checkInTime checkOutTime organizationId allotedLeave"
+        "name is_active weekLeave createdAt username role email salary joinDate checkInTime checkOutTime organizationId allotedLeave mobileNumber"
       )
       .populate("reportingManager", "name")
 
@@ -240,30 +242,33 @@ exports.userAttendance = async (req, res, next) => {
         moment(attendance.date).isSame(currentDate, "day")
       );
 
-      // If no record exists, mark it as "absent" or "holiday"
-      if (!record) {
-        attendanceData.push({
-          date: currentDate,
-          status: `${
-            moment(currentDate).isBefore(user.joinDate)
-              ? "before_join"
-              : isHoliday
-              ? "holiday"
-              : moment(currentDate).isSameOrAfter(moment())
-              ? "not available"
-              : "absent"
-          }`,
-          checkInTime: null,
-          checkOutTime: null,
-        });
+      // Determine the status for the current day
+      let status = "";
+
+      // Check if the current date matches the user's weak leave day
+      if (moment(currentDate).format("dddd") === user.weekLeave) {
+        status = "weak_leave";
+      } else if (!record) {
+        status = `${
+          moment(currentDate).isBefore(user.joinDate)
+            ? "before_join"
+            : isHoliday
+            ? "holiday"
+            : moment(currentDate).isSameOrAfter(moment())
+            ? "not available"
+            : "absent"
+        }`;
       } else {
-        attendanceData.push({
-          date: record.date,
-          status: record.status,
-          checkInTime: record.checkInTime,
-          checkOutTime: record.checkOutTime,
-        });
+        status = record.status;
       }
+
+      // Push the attendance data for the current day
+      attendanceData.push({
+        date: currentDate,
+        status,
+        checkInTime: record ? record.checkInTime : null,
+        checkOutTime: record ? record.checkOutTime : null,
+      });
     }
 
     // Attach the attendance data to the response
@@ -272,7 +277,10 @@ exports.userAttendance = async (req, res, next) => {
     };
 
     createSucces(res, 200, "User details retrieved successfully", userDetails);
-  } catch (error) {}
+  } catch (error) {
+    // Handle errors here, e.g., log the error and send a response
+    next(createError(500, "Internal Server Error"));
+  }
 };
 
 //Update user
