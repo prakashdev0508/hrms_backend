@@ -161,14 +161,18 @@ exports.userDetail = async (req, res, next) => {
     // Get user data with reporting manager populated
     const user = await User.findById(id)
       .select(
-        "name is_active weekLeave createdAt username role email salary joinDate checkInTime checkOutTime"
+        "name is_active weekLeave createdAt username role email salary joinDate checkInTime checkOutTime organizationId allotedLeave"
       )
       .populate("reportingManager", "name")
-      .populate("organizationId", "holidays weakHoliday");
 
-    // Attach the attendance data to the response
+      const reportingManagerList = await User.find({
+        organizationId : user.organizationId ,
+        role: { $in: ["super_admin", "reporting_manager"] },
+      }).select("name role");
+
     const userDetails = {
       ...user._doc,
+      reportingManagerList
     };
 
     createSucces(res, 200, "User details retrieved successfully", userDetails);
