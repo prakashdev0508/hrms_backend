@@ -59,7 +59,7 @@ exports.getUserDetails = async (req, res, next) => {
 
     const user = await User.findById(_id)
       .select(
-        "name username organizationId weekLeave allotedLeave salary joinDate leaveTaken workDuration reportingManager"
+        "name username organizationId weekLeave allotedLeave salary joinDate leaveTaken workDuration reportingManager mobileNumber"
       )
       .populate("reportingManager", "name")
 
